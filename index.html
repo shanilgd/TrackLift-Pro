@@ -24,9 +24,8 @@
             <div style="text-align: center;">
                 <h1 style="display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 5px;">
                     <i class="fa-solid fa-train-tram" style="color: #60a5fa;"></i> TrackLift Pro
-                    <span style="font-size: 0.45em; color: var(--text-muted); font-weight: 400; letter-spacing: 1px; padding-top: 5px;">OPTIMIZATION METHOD</span>
                     <span id="app-version" class="version-tag"
-                        style="font-size: 0.45em; background: rgba(59, 130, 246, 0.2); color: #93c5fd; padding: 4px 10px; border-radius: 12px; font-weight: 600;">v1.0.0</span>
+                        style="font-size: 0.45em; background: rgba(59, 130, 246, 0.2); color: #93c5fd; padding: 4px 10px; border-radius: 12px; font-weight: 600;">v1.0.1</span>
                 </h1>
                 <p class="subtitle" style="font-size: 1.15rem;">Vertical Profile Optimization Platform</p>
             </div>
@@ -34,9 +33,11 @@
                 <button id="btn-check-updates" class="btn secondary" style="height: 42px; border-radius: 21px; padding: 0 20px; background: rgba(0,0,0,0.2);" title="Check for Updates">
                     <i class="fa-solid fa-cloud-arrow-down" style="color: #60a5fa;"></i> Updates
                 </button>
-                <button id="btn-credits" class="btn secondary" style="height: 42px; border-radius: 21px; padding: 0 20px; background: rgba(0,0,0,0.2);"
-                    title="Credits">
-                    <i class="fa-solid fa-star" style="color: #fbbf24;"></i> Credits
+                <button id="btn-help" class="btn secondary" style="height: 42px; border-radius: 21px; padding: 0 20px; background: rgba(0,0,0,0.2);" title="Help & Documentation">
+                    <i class="fa-solid fa-circle-question" style="color: #4ade80;"></i> Help
+                </button>
+                <button id="btn-changelog" class="btn secondary" style="height: 42px; border-radius: 21px; padding: 0 20px; background: rgba(0,0,0,0.2);" title="What's New">
+                    <i class="fa-solid fa-list-check" style="color: #fbbf24;"></i> Changelog
                 </button>
             </div>
         </header>
@@ -283,10 +284,84 @@
         </div>
     </div>
 
-    <script src="lib/chart.js"></script>
+    <!-- Help Modal -->
+    <div id="modal-help" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 800px; max-height: 85vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h2><i class="fa-solid fa-circle-question"></i> TrackLift Pro - Documentation</h2>
+                <button id="close-help" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body" style="text-align: left; line-height: 1.6;">
+                <section style="margin-bottom: 25px;">
+                    <h3 style="color: #60a5fa; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px;">Application Overview</h3>
+                    <p>TrackLift Pro is a precision engineering tool designed to optimize railway track vertical profiles. It uses advanced mathematical algorithms to smooth out existing track irregularities while adhering to strict lifting and radius constraints.</p>
+                </section>
+
+                <section style="margin-bottom: 25px;">
+                    <h3 style="color: #60a5fa; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px;">Key Optimization Modes</h3>
+                    <ul style="padding-left: 20px;">
+                        <li><strong>Pure Laplacian (1.0):</strong> Provides the maximum possible geometric smoothness. Best for long stretches with gradual changes where overall track regularity is the top priority.</li>
+                        <li><strong>Blend 0.9 (Default):</strong> High smoothing but allows the profile to follow the natural terrain slightly more. Ideal for most standard site conditions.</li>
+                        <li><strong>Blend 0.5:</strong> Balanced mode that preserves significant local dips (sags) while still removing minor jitter. Useful when structural constraints limit large lifts.</li>
+                        <li><strong>Pure Min-Lift (0.0):</strong> Skips smoothing steps to prioritize the absolute minimum lift required to meet basic geometric rules. Best for strict budgetary or ballast depth constraints.</li>
+                    </ul>
+                </section>
+
+                <section style="margin-bottom: 25px;">
+                    <h3 style="color: #60a5fa; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px;">Workflow Instructions</h3>
+                    <ol style="padding-left: 20px;">
+                        <li><strong>Project Config:</strong> Enter Start/End chainage and desired node intervals.</li>
+                        <li><strong>Input Data:</strong> Generate a blank grid or import an Excel file (using the provided Template).</li>
+                        <li><strong>Obligatory Points:</strong> Mark critical points (like bridges or level crossings) as "Obligatory" to force 0.000 lift at those locations.</li>
+                        <li><strong>Calculate:</strong> Click "Calculate Profile" to run the optimization engine.</li>
+                        <li><strong>Review & Export:</strong> Check the resulting lifts and radius warnings in the table and graph. Export to Excel or a professional PDF report.</li>
+                    </ol>
+                </section>
+
+                <section>
+                    <h3 style="color: #60a5fa; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px;">Standards Compliance</h3>
+                    <p>Calculations adhere to IRPWM guidelines for vertical curve radii and gradient transitions based on route classifications (Group A, B, C, D, E).</p>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <!-- Changelog Modal -->
+    <div id="modal-changelog" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2><i class="fa-solid fa-list-check"></i> What's New</h2>
+                <button id="close-changelog" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body" style="text-align: left;">
+                <div style="margin-bottom: 20px; border-left: 4px solid #3b82f6; padding-left: 15px;">
+                    <h4 style="margin-bottom: 5px; color: #93c5fd;">Version 1.0.1 (Current)</h4>
+                    <ul style="padding-left: 20px; font-size: 0.95rem;">
+                        <li>Added comprehensive Help and Documentation menu.</li>
+                        <li>Added Changelog tracking.</li>
+                        <li>Fixed UI header alignment.</li>
+                        <li>Integrated standalone auto-updater with GitHub.</li>
+                        <li>Improved PDF report cell formatting for long remarks.</li>
+                    </ul>
+                </div>
+                <div style="opacity: 0.7;">
+                    <h4 style="margin-bottom: 5px;">Version 1.0.0</h4>
+                    <ul style="padding-left: 20px; font-size: 0.9rem;">
+                        <li>Initial Release of TrackLift Pro.</li>
+                        <li>Multi-mode Laplacian optimization.</li>
+                        <li>Excel Import/Export and Template generation.</li>
+                        <li>Professional PDF reporting with vector graphics.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="lib/xlsx.full.min.js"></script>
+    <script src="lib/chart.js"></script>
     <script src="lib/jspdf.umd.min.js"></script>
     <script src="lib/jspdf.plugin.autotable.min.js"></script>
     <script src="app.js"></script>
 </body>
+
 </html>

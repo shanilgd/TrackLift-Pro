@@ -34,6 +34,13 @@ document.addEventListener('DOMContentLoaded', () => {
         statTotalLift: document.getElementById('stat-total-lift'),
         // Auto-Update
         btnCheckUpdates: document.getElementById('btn-check-updates'),
+        // Help & Changelog
+        btnHelp: document.getElementById('btn-help'),
+        btnChangelog: document.getElementById('btn-changelog'),
+        modalHelp: document.getElementById('modal-help'),
+        modalChangelog: document.getElementById('modal-changelog'),
+        btnCloseHelp: document.getElementById('close-help'),
+        btnCloseChangelog: document.getElementById('close-changelog'),
         updateModal: document.getElementById('update-modal'),
         updateVersionText: document.getElementById('update-version-text'),
         btnUpdateDownload: document.getElementById('btn-update-download'),
@@ -60,18 +67,39 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // === Initialization ===
+    
+    // Help & Changelog listeners
+    if (elements.btnHelp) elements.btnHelp.addEventListener('click', () => elements.modalHelp.classList.remove('hidden'));
+    if (elements.btnCloseHelp) elements.btnCloseHelp.addEventListener('click', () => elements.modalHelp.classList.add('hidden'));
+    if (elements.btnChangelog) elements.btnChangelog.addEventListener('click', () => elements.modalChangelog.classList.remove('hidden'));
+    if (elements.btnCloseChangelog) elements.btnCloseChangelog.addEventListener('click', () => elements.modalChangelog.classList.add('hidden'));
+
+    // Close modals on outside click
+    window.addEventListener('click', (e) => {
+        if (e.target === elements.modalHelp) elements.modalHelp.classList.add('hidden');
+        if (e.target === elements.modalChangelog) elements.modalChangelog.classList.add('hidden');
+    });
+
+    // Update check listener
     if (elements.btnCheckUpdates) {
         elements.btnCheckUpdates.addEventListener('click', () => {
-            if (window.electronAPI && window.electronAPI.checkForUpdates) {
-                window.electronAPI.checkForUpdates();
-                elements.btnCheckUpdates.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Checking...';
-                elements.btnCheckUpdates.disabled = true;
-                setTimeout(() => {
-                    elements.btnCheckUpdates.innerHTML = '<i class="fa-solid fa-cloud-arrow-down"></i> Updates';
-                    elements.btnCheckUpdates.disabled = false;
-                }, 3000);
+            if (window.electronAPI) {
+                window.electronAPI.checkForUpdates().then(res => {
+                    if (!res.success) showToast(res.message);
+                });
             } else {
-                showToast("Updater is unavailable.");
+                showToast("Update check only available in desktop app.");
+            }
+        });
+    }
+
+    if (window.electronAPI) {
+        window.electronAPI.onUpdateStatus((status, detail) => {
+            if (status === 'checking') showToast("Checking for updates...");
+            if (status === 'not-available') showToast("You are already on the latest version.");
+            if (status === 'downloading') {
+                // Optional: show progress toast or update button text
+                elements.btnCheckUpdates.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> ${detail.toFixed(0)}%`;
             }
         });
     }

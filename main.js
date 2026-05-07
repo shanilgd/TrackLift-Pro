@@ -76,3 +76,25 @@ autoUpdater.on('error', (err) => {
 ipcMain.handle('get-app-version', () => {
     return app.getVersion();
 });
+
+ipcMain.handle('check-for-updates', () => {
+    if (app.isPackaged) {
+        autoUpdater.checkForUpdates();
+        return { success: true };
+    } else {
+        return { success: false, message: "Update check only available in packaged app." };
+    }
+});
+
+// Update Status Reporting
+autoUpdater.on('checking-for-update', () => {
+    mainWindow?.webContents.send('update-status', 'checking');
+});
+
+autoUpdater.on('update-not-available', () => {
+    mainWindow?.webContents.send('update-status', 'not-available');
+});
+
+autoUpdater.on('download-progress', (progressObj) => {
+    mainWindow?.webContents.send('update-status', 'downloading', progressObj.percent);
+});
