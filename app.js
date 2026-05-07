@@ -51,7 +51,10 @@ document.addEventListener('DOMContentLoaded', () => {
         updateProgressFill: document.getElementById('update-progress-fill'),
         updateInstallContainer: document.getElementById('update-install-container'),
         btnUpdateInstall: document.getElementById('btn-update-install'),
-        // Credits
+        // Excel Import
+        btnImportExcel: document.getElementById('btn-import-excel'),
+        excelUpload: document.getElementById('excel-upload'),
+        // Credits (Optional/Cleanup)
         btnCredits: document.getElementById('btn-credits'),
         creditsModal: document.getElementById('credits-modal'),
         closeCredits: document.getElementById('close-credits'),
@@ -104,9 +107,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Credits modal
-    elements.btnCredits.addEventListener('click', () => elements.creditsModal.classList.remove('hidden'));
-    elements.closeCredits.addEventListener('click', () => elements.creditsModal.classList.add('hidden'));
+    // Credits modal (Safe check)
+    if (elements.btnCredits && elements.creditsModal) {
+        elements.btnCredits.addEventListener('click', () => elements.creditsModal.classList.remove('hidden'));
+        elements.closeCredits.addEventListener('click', () => elements.creditsModal.classList.add('hidden'));
+    }
 
     elements.btnGenerate.addEventListener('click', generateGrid);
     elements.btnCalculate.addEventListener('click', calculateProfile);
@@ -114,6 +119,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (elements.btnTemplate) elements.btnTemplate.addEventListener('click', downloadTemplate);
     if (elements.btnExportPdf) elements.btnExportPdf.addEventListener('click', exportPDF);
     elements.btnReset.addEventListener('click', resetApp);
+
+    // Excel Import Logic
+    if (elements.btnImportExcel && elements.excelUpload) {
+        elements.btnImportExcel.addEventListener('click', () => elements.excelUpload.click());
+        elements.excelUpload.addEventListener('change', handleExcelImport);
+    }
     
     if (elements.btnBackToConfig) {
         elements.btnBackToConfig.addEventListener('click', () => {
