@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrackLift Pro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+    <div class="background-globes">
+        <div class="globe globe-1"></div>
+        <div class="globe globe-2"></div>
+        <div class="globe globe-3"></div>
+    </div>
+
+    <div class="app-container">
+        <header style="display: flex; flex-direction: column; gap: 20px; align-items: center; justify-content: center; background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px; padding: 25px; margin-bottom: 30px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2); backdrop-filter: blur(12px);">
+            <div style="text-align: center;">
+                <h1 style="display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 5px;">
+                    <i class="fa-solid fa-train-tram" style="color: #60a5fa;"></i> TrackLift Pro
+                    <span style="font-size: 0.45em; color: var(--text-muted); font-weight: 400; letter-spacing: 1px; padding-top: 5px;">OPTIMIZATION METHOD</span>
+                    <span id="app-version" class="version-tag"
+                        style="font-size: 0.45em; background: rgba(59, 130, 246, 0.2); color: #93c5fd; padding: 4px 10px; border-radius: 12px; font-weight: 600;">v1.0.0</span>
+                </h1>
+                <p class="subtitle" style="font-size: 1.15rem;">Vertical Profile Optimization Platform</p>
+            </div>
+            <div style="display: flex; gap: 15px; align-items: center; justify-content: center; flex-wrap: wrap;">
+                <button id="btn-check-updates" class="btn secondary" style="height: 42px; border-radius: 21px; padding: 0 20px; background: rgba(0,0,0,0.2);" title="Check for Updates">
+                    <i class="fa-solid fa-cloud-arrow-down" style="color: #60a5fa;"></i> Updates
+                </button>
+                <button id="btn-credits" class="btn secondary" style="height: 42px; border-radius: 21px; padding: 0 20px; background: rgba(0,0,0,0.2);"
+                    title="Credits">
+                    <i class="fa-solid fa-star" style="color: #fbbf24;"></i> Credits
+                </button>
+            </div>
+        </header>
+
+        <main>
+            <!-- Project Details Section -->
+            <section class="card project-card fade-in">
+                <div class="card-header">
+                    <h2><i class="fa-solid fa-briefcase"></i> Project Details</h2>
+                </div>
+                <div class="config-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                    <div class="input-group"><label>Zone</label><input type="text" id="proj-zone" placeholder="e.g. SR"></div>
+                    <div class="input-group"><label>Division</label><input type="text" id="proj-division" placeholder="e.g. MAS"></div>
+                    <div class="input-group"><label>PWAY Section</label><input type="text" id="proj-pway" placeholder="e.g. SPE"></div>
+                    <div class="input-group"><label>Block Section</label><input type="text" id="proj-block" placeholder="e.g. MAS-GDR"></div>
+                    <div class="input-group"><label>Line</label><input type="text" id="proj-line" placeholder="e.g. UP"></div>
+                    <div class="input-group"><label>Km</label><input type="text" id="proj-km" placeholder="e.g. 100-101"></div>
+                    <div class="input-group"><label>LH/RH</label><input type="text" id="proj-side" placeholder="e.g. LH"></div>
+                    <div class="input-group"><label>LOA No</label><input type="text" id="proj-loa" placeholder="e.g. 123/2025"></div>
+                </div>
+            </section>
+
+            <!-- Configuration Section -->
+            <section class="card config-card">
+                <div class="card-header">
+                    <h2><i class="fa-solid fa-sliders"></i> Configuration</h2>
+                </div>
+                <div class="config-grid">
+                    <div class="input-group">
+                        <label for="start-chainage">Start Chainage (km)</label>
+                        <input type="text" id="start-chainage" placeholder="0.000" value="0.000">
+                    </div>
+                    <div class="input-group">
+                        <label for="end-chainage">End Chainage (km)</label>
+                        <input type="text" id="end-chainage" placeholder="0.100" value="0.100">
+                    </div>
+                    <div class="input-group">
+                        <label for="interval">Input Interval (m)</label>
+                        <input type="number" id="interval" placeholder="20" value="20" step="1">
+                    </div>
+                    <div class="input-group">
+                        <label for="out-interval">Output Interval (m)</label>
+                        <input type="number" id="out-interval" placeholder="4" value="4" step="1">
+                        <small style="margin-top: 4px;">Interpolation distance.</small>
+                    </div>
+                    <div class="input-group">
+                        <label for="max-lift">Max Lift (mm)</label>
+                        <input type="number" id="max-lift" placeholder="100" value="100" step="1">
+                        <small style="margin-top: 4px;">Maximum permissible lifting.</small>
+                    </div>
+                    <div class="input-group">
+                        <label for="min-radius">Min. Vertical Curve Radius</label>
+                        <select id="min-radius" style="background: var(--input-bg); color: var(--text-main); border: 1px solid var(--card-border); border-radius: 6px; padding: 10px 12px; font-size: 0.95rem; width: 100%;">
+                            <option value="4000">4000 m &mdash; Group A</option>
+                            <option value="3000" selected>3000 m &mdash; Group B</option>
+                            <option value="2500">2500 m &mdash; Group C, D &amp; E</option>
+                        </select>
+                        <small style="margin-top: 4px;">As per IRPWM, based on route classification.</small>
+                    </div>
+                    <div class="input-group">
+                        <label for="opt-method">Optimisation Method</label>
+                        <select id="opt-method" style="background: var(--input-bg); color: var(--text-main); border: 1px solid var(--card-border); border-radius: 6px; padding: 10px 12px; font-size: 0.95rem; width: 100%;">
+                            <option value="1.0">Pure Laplacian &mdash; Maximum smoothing</option>
+                            <option value="0.9" selected>Blend 0.9 &mdash; High smoothing, slight sag retention</option>
+                            <option value="0.5">Blend 0.5 &mdash; Moderate sag preservation</option>
+                            <option value="0.0">Pure Min-Lift &mdash; Minimum track lift</option>
+                        </select>
+                        <small style="margin-top: 4px;">Laplacian: regular profile. Blend: irregular sags. Min-Lift: strict economy.</small>
+                    </div>
+                </div>
+
+                <div class="action-bar" style="gap: 10px; align-items: center;">
+                    <button id="btn-generate" class="btn primary">
+                        <i class="fa-solid fa-table-cells"></i> Generate Grid
+                    </button>
+                    <input type="file" id="excel-upload" accept=".xlsx, .xls" style="display: none;">
+                    <button id="btn-import-excel" class="btn secondary">
+                        <i class="fa-solid fa-file-import"></i> Import Excel
+                    </button>
+                    <button id="btn-template" class="btn secondary" title="Download Excel Template">
+                        <i class="fa-solid fa-download"></i> Template
+                    </button>
+                    <button id="btn-reset" class="btn secondary" style="background-color: #ef4444; color: white;">
+                        <i class="fa-solid fa-rotate-right"></i> Reset
+                    </button>
+                </div>
+            </section>
+
+            <!-- Data Entry Section -->
+            <section id="data-section" class="card data-card hidden">
+                <div class="card-header">
+                    <h2><i class="fa-solid fa-pen-to-square"></i> Input Levels</h2>
+                    <div class="controls">
+                        <button id="btn-calculate" class="btn success">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> Calculate Profile
+                        </button>
+                    </div>
+                </div>
+                <div class="table-scroller">
+                    <table id="levels-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 100px; text-align: center;">Chainage</th>
+                                <th style="width: 120px; text-align: center;">Existing Level (m)</th>
+                                <th style="width: 100px; text-align: center;">Km Length (m)</th>
+                                <th style="width: 80px; text-align: center;">Obligatory<br><small>(Zero Lift)</small></th>
+                                <th style="text-align: center;">Remarks</th>
+                                <th style="width: 90px; text-align: center;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Dynamic Rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Results Section -->
+            <section id="results-section" class="card results-card hidden">
+                <div class="card-header">
+                    <h2><i class="fa-solid fa-chart-line"></i> Optimized Profile</h2>
+                    <div class="export-controls" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <button id="btn-back-to-config" class="btn secondary" title="Back to Configuration">
+                            <i class="fa-solid fa-arrow-up"></i> Back to Config
+                        </button>
+                        <button id="btn-export-pdf" class="btn secondary">
+                            <i class="fa-solid fa-file-pdf" style="color:#f87171;"></i> Export PDF
+                        </button>
+                        <button id="btn-export" class="btn secondary">
+                            <i class="fa-solid fa-file-excel"></i> Export Excel
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Full Width Graph inside Results Section -->
+                <div class="chart-controls" style="display: flex; gap: 15px; align-items: center; margin-bottom: 15px; background: rgba(0,0,0,0.2); padding: 10px 15px; border-radius: 8px; border: 1px solid var(--card-border);">
+                    <label style="color: #94a3b8; font-weight: 600;">Graph Scale:</label>
+                    <select id="chart-scale" style="background: var(--input-bg); color: var(--text-main); border: 1px solid var(--card-border); border-radius: 4px; padding: 5px 10px;">
+                        <option value="full">Full Stretch</option>
+                        <option value="1000">1 km</option>
+                        <option value="500">500 m</option>
+                        <option value="200">200 m</option>
+                        <option value="100">100 m</option>
+                        <option value="50">50 m</option>
+                        <option value="20">20 m</option>
+                    </select>
+                    
+                    <div style="flex-grow: 1;"></div>
+                    
+                    <button id="btn-chart-prev" class="btn secondary small" disabled><i class="fa-solid fa-chevron-left"></i> Prev</button>
+                    <span id="chart-range-label" style="color: #93c5fd; font-weight: 600; min-width: 150px; text-align: center;">All Chainages</span>
+                    <button id="btn-chart-next" class="btn secondary small" disabled>Next <i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+
+                <div class="canvas-container" style="width: 100%; height: 400px; margin-bottom: 2rem; background: var(--input-bg); border-radius: 8px; border: 1px solid var(--card-border); padding: 10px;">
+                    <canvas id="profile-chart"></canvas>
+                </div>
+
+                <div class="summary-stats">
+                    <div class="stat-box" style="border-color: rgba(59, 130, 246, 0.5);">
+                        <span class="stat-label">Min Curve Radius Achieved</span>
+                        <span class="stat-value" id="stat-radius" style="color: #60a5fa;">3000 m</span>
+                    </div>
+                    <div class="stat-box" style="border-color: rgba(239, 68, 68, 0.5);">
+                        <span class="stat-label">Maximum Lift Required</span>
+                        <span class="stat-value" id="stat-max-lift" style="color: #ef4444;">0 mm</span>
+                    </div>
+                    <div class="stat-box" style="border-color: rgba(16, 185, 129, 0.5);">
+                        <span class="stat-label">Total Volume Shift (approx)</span>
+                        <span class="stat-value" id="stat-total-lift" style="color: #10b981;">0 mm</span>
+                    </div>
+                </div>
+
+                <div class="table-scroller">
+                    <table id="results-table">
+                        <thead>
+                            <tr>
+                                <th>Chainage</th>
+                                <th>Existing Level (m)</th>
+                                <th style="text-align: center;">Ex. Gradient</th>
+                                <th>Proposed Level (m)</th>
+                                <th>Lift (mm)</th>
+                                <th style="text-align: center;">Pr. Gradient</th>
+                                <th>Remarks</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Results Rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+
+        <!-- Update Modal -->
+        <div id="update-modal" class="modal hidden">
+            <!-- (Same as Earthwork Calculator) -->
+            <div class="modal-content" style="max-width: 400px; text-align: center;">
+                <div class="modal-header" style="justify-content: center;">
+                    <h2><i class="fa-solid fa-cloud-arrow-down" style="color: #60a5fa;"></i> Update Available</h2>
+                </div>
+                <div class="modal-body" style="padding: 20px 0;">
+                    <p id="update-version-text" style="font-size: 1.2rem; margin-bottom: 20px; font-weight: 600;">Version x.x.x is available!</p>
+                    
+                    <div id="update-action-container" style="display: flex; justify-content: center; gap: 15px;">
+                        <button id="btn-update-download" class="btn primary"><i class="fa-solid fa-download"></i> Download</button>
+                        <button id="btn-update-cancel" class="btn secondary">Cancel</button>
+                    </div>
+
+                    <div id="update-progress-container" class="hidden" style="margin-top: 20px;">
+                        <p id="update-progress-text" style="margin-bottom: 10px; font-weight: bold; color: #475569;">Downloading: 0%</p>
+                        <div class="progress-bar" style="width: 100%; height: 12px; background: #e2e8f0; border-radius: 6px; overflow: hidden; box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);">
+                            <div id="update-progress-fill" style="width: 0%; height: 100%; background: linear-gradient(90deg, #3b82f6, #60a5fa); transition: width 0.2s ease;"></div>
+                        </div>
+                    </div>
+
+                    <div id="update-install-container" class="hidden" style="margin-top: 20px;">
+                        <button id="btn-update-install" class="btn primary" style="width: 100%; background: linear-gradient(135deg, #10b981, #059669); border: none;"><i class="fa-solid fa-power-off"></i> Install & Restart</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Credits Modal -->
+        <div id="credits-modal" class="modal hidden">
+            <div class="modal-content" style="max-width: 400px; text-align: center;">
+                <span class="close-modal" id="close-credits">&times;</span>
+                <h2><i class="fa-solid fa-star"></i> Credits</h2>
+                <div style="margin: 20px 0; line-height: 1.6;">
+                    <p><strong>Top Tracking Calculator</strong></p>
+                    <p>Version <span class="credits-version">1.0.0</span></p>
+                    <p style="margin-top: 10px;">Built by <strong>SHANIL G D (SSE PWAY)</strong></p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    
+    <!-- Toast Notification Container -->
+    <div id="toast-notification" class="toast hidden" style="position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #10b981; color: white; padding: 12px 24px; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); z-index: 9999; font-weight: bold; transition: opacity 0.5s ease;">
+        <div class="toast-content" style="display: flex; align-items: center; gap: 8px;">
+            <i class="fa-solid fa-circle-info toast-icon"></i>
+            <span id="toast-message">Notification message goes here</span>
+        </div>
+    </div>
+
+    <script src="lib/chart.js"></script>
+    <script src="lib/xlsx.full.min.js"></script>
+    <script src="lib/jspdf.umd.min.js"></script>
+    <script src="lib/jspdf.plugin.autotable.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

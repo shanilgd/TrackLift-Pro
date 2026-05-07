@@ -1,0 +1,8 @@
+node_modules/
+dist/
+TopTracking_Optimized.xlsx
+TrackLift_Pro_Optimized.xlsx
+TopTracking_Import_Template.xlsx
+TrackLift_Pro_Template.xlsx
+*.pdf
+.env
