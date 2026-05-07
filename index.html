@@ -25,7 +25,7 @@
                 <h1 style="display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 5px;">
                     <i class="fa-solid fa-train-tram" style="color: #60a5fa;"></i> TrackLift Pro
                     <span id="app-version" class="version-tag"
-                        style="font-size: 0.45em; background: rgba(59, 130, 246, 0.2); color: #93c5fd; padding: 4px 10px; border-radius: 12px; font-weight: 600;">v1.0.1</span>
+                        style="font-size: 0.45em; background: rgba(59, 130, 246, 0.2); color: #93c5fd; padding: 4px 10px; border-radius: 12px; font-weight: 600;">v1.0.2</span>
                 </h1>
                 <p class="subtitle" style="font-size: 1.15rem;">Vertical Profile Optimization Platform</p>
             </div>
@@ -55,8 +55,6 @@
                     <div class="input-group"><label>Block Section</label><input type="text" id="proj-block" placeholder="e.g. MAS-GDR"></div>
                     <div class="input-group"><label>Line</label><input type="text" id="proj-line" placeholder="e.g. UP"></div>
                     <div class="input-group"><label>Km</label><input type="text" id="proj-km" placeholder="e.g. 100-101"></div>
-                    <div class="input-group"><label>LH/RH</label><input type="text" id="proj-side" placeholder="e.g. LH"></div>
-                    <div class="input-group"><label>LOA No</label><input type="text" id="proj-loa" placeholder="e.g. 123/2025"></div>
                 </div>
             </section>
 
@@ -318,6 +316,15 @@
                     </ol>
                 </section>
 
+                <section style="margin-bottom: 25px;">
+                    <h3 style="color: #60a5fa; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px;">Advanced Engineering Support</h3>
+                    <ul style="padding-left: 20px;">
+                        <li><strong>Flexible Chainage Formats:</strong> Supports various inputs including <code>500/480</code>, <code>500.480</code>, or plain decimals.</li>
+                        <li><strong>Variable Intervals:</strong> Nodes do not need to be at fixed 20m intervals. The engine dynamically calculates distances between any mixed intervals (e.g., 20m mixed with 4m or 5m).</li>
+                        <li><strong>Long/Short Km Support:</strong> Use the <code>Km Length (m)</code> column to specify non-standard kilometer lengths. The optimization engine accurately adjusts gradients and curves based on the true longitudinal distance.</li>
+                    </ul>
+                </section>
+
                 <section>
                     <h3 style="color: #60a5fa; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px;">Standards Compliance</h3>
                     <p>Calculations adhere to IRPWM guidelines for vertical curve radii and gradient transitions based on route classifications (Group A, B, C, D, E).</p>
@@ -335,8 +342,16 @@
             </div>
             <div class="modal-body" style="text-align: left;">
                 <div style="margin-bottom: 20px; border-left: 4px solid #3b82f6; padding-left: 15px;">
-                    <h4 style="margin-bottom: 5px; color: #93c5fd;">Version 1.0.1 (Current)</h4>
+                    <h4 style="margin-bottom: 5px; color: #93c5fd;">Version 1.0.2 (Current)</h4>
                     <ul style="padding-left: 20px; font-size: 0.95rem;">
+                        <li>Updated application icon to transparent version.</li>
+                        <li>Cleaned up Project Details panel (removed LH/RH and LOA columns).</li>
+                        <li>Added technical documentation for Long/Short Kms and Chainage formats in Help menu.</li>
+                    </ul>
+                </div>
+                <div style="margin-bottom: 20px; opacity: 0.8; border-left: 4px solid #94a3b8; padding-left: 15px;">
+                    <h4 style="margin-bottom: 5px;">Version 1.0.1</h4>
+                    <ul style="padding-left: 20px; font-size: 0.9rem;">
                         <li>Added comprehensive Help and Documentation menu.</li>
                         <li>Added Changelog tracking.</li>
                         <li>Fixed UI header alignment.</li>
