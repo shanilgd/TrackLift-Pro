@@ -1,7 +1,7 @@
 {
   "name": "tracklift-pro",
-  "version": "1.0.2",
-  "productName": "TrackLift Pro v1.0.2",
+  "version": "1.0.3",
+  "productName": "TrackLift Pro v1.0.3",
   "description": "Railway Track Level Optimizer",
   "main": "main.js",
   "repository": {

@@ -25,10 +25,14 @@ document.addEventListener('DOMContentLoaded', () => {
         btnBackToConfig: document.getElementById('btn-back-to-config'),
         btnReset: document.getElementById('btn-reset'),
         chartCanvas: document.getElementById('profile-chart'),
-        chartScale: document.getElementById('chart-scale'),
-        btnChartPrev: document.getElementById('btn-chart-prev'),
-        btnChartNext: document.getElementById('btn-chart-next'),
-        chartRangeLabel: document.getElementById('chart-range-label'),
+        zoomX: document.getElementById('zoom-x'),
+        zoomXVal: document.getElementById('zoom-x-val'),
+        zoomY: document.getElementById('zoom-y'),
+        zoomYVal: document.getElementById('zoom-y-val'),
+        chartInnerContainer: document.getElementById('chart-inner-container'),
+        chartScrollWrapper: document.getElementById('chart-scroll-wrapper'),
+        jumpChainageInput: document.getElementById('jump-chainage-input'),
+        btnJumpChainage: document.getElementById('btn-jump-chainage'),
         statRadius: document.getElementById('stat-radius'),
         statMaxLift: document.getElementById('stat-max-lift'),
         statTotalLift: document.getElementById('stat-total-lift'),
@@ -64,7 +68,6 @@ document.addEventListener('DOMContentLoaded', () => {
         nodes: [], // 20m nodes
         results4m: [], // 4m interpolated results
         profileChart: null,
-        chartChunkIndex: 0,
         kmLengths: {}, // { "100": 1000, "101": 980 }
         remarks: {} // Keyed by chainage
     };
@@ -132,21 +135,139 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Chart scale controls
-    if (elements.chartScale) {
-        elements.chartScale.addEventListener('change', () => {
-            appState.chartChunkIndex = 0;
-            renderChart();
-        });
-        elements.btnChartPrev.addEventListener('click', () => {
-            if (appState.chartChunkIndex > 0) {
-                appState.chartChunkIndex--;
-                renderChart();
+    // Chart zoom controls
+    if (elements.zoomX && elements.zoomY && elements.chartInnerContainer && elements.chartScrollWrapper) {
+        elements.zoomX.addEventListener('input', (e) => {
+            const wrapper = elements.chartScrollWrapper;
+            const container = elements.chartInnerContainer;
+            
+            // Calculate current center ratio
+            const oldWidth = container.clientWidth || 1;
+            const scrollX = wrapper.scrollLeft;
+            const viewWidth = wrapper.clientWidth;
+            const ratioX = (scrollX + viewWidth / 2) / oldWidth;
+
+            // Apply new zoom
+            const val = e.target.value;
+            if (elements.zoomXVal) elements.zoomXVal.textContent = `${val}%`;
+            container.style.width = `${val}%`;
+            
+            // Force layout recalculation and restore scroll
+            const newWidth = container.clientWidth;
+            wrapper.scrollLeft = (ratioX * newWidth) - (viewWidth / 2);
+
+            if (appState.profileChart) {
+                appState.profileChart.options.scales.x.ticks.maxTicksLimit = Math.floor(20 * (val / 100));
+                appState.profileChart.update('none');
+                appState.profileChart.resize();
             }
         });
-        elements.btnChartNext.addEventListener('click', () => {
-            appState.chartChunkIndex++;
-            renderChart();
+        
+        elements.zoomY.addEventListener('input', (e) => {
+            const wrapper = elements.chartScrollWrapper;
+            const container = elements.chartInnerContainer;
+            
+            // Calculate current center ratio
+            const oldHeight = container.clientHeight || 1;
+            const scrollY = wrapper.scrollTop;
+            const viewHeight = wrapper.clientHeight;
+            const ratioY = (scrollY + viewHeight / 2) / oldHeight;
+
+            // Apply new zoom
+            const val = e.target.value;
+            if (elements.zoomYVal) elements.zoomYVal.textContent = `${val}%`;
+            container.style.height = `${val}%`;
+            
+            // Force layout recalculation and restore scroll
+            const newHeight = container.clientHeight;
+            wrapper.scrollTop = (ratioY * newHeight) - (viewHeight / 2);
+
+            if (appState.profileChart) appState.profileChart.resize();
+        });
+    }
+
+    // Jump to Chainage Logic
+    if (elements.btnJumpChainage && elements.jumpChainageInput && elements.chartScrollWrapper) {
+        elements.btnJumpChainage.addEventListener('click', () => {
+            const targetChText = elements.jumpChainageInput.value.trim();
+            if (!targetChText || appState.results4m.length === 0) return;
+            
+            // Parse target chainage
+            let targetCh = 0;
+            if (targetChText.includes('/') || targetChText.includes('+')) {
+                const parts = targetChText.split(/[\/\+]/);
+                targetCh = parseFloat(parts[0]) + (parseFloat(parts[1]) / 1000);
+            } else {
+                targetCh = parseFloat(targetChText);
+            }
+            if (isNaN(targetCh)) return;
+
+            // Find closest result
+            let closest = appState.results4m[0];
+            let minDiff = Math.abs(closest.chainage - targetCh);
+            for (let r of appState.results4m) {
+                const diff = Math.abs(r.chainage - targetCh);
+                if (diff < minDiff) {
+                    minDiff = diff;
+                    closest = r;
+                }
+            }
+
+            // Calculate exact position
+            const maxDist = appState.results4m[appState.results4m.length - 1].globalDist;
+            const ratioX = closest.globalDist / maxDist;
+            
+            const wrapper = elements.chartScrollWrapper;
+            const container = elements.chartInnerContainer;
+            const totalWidth = container.clientWidth;
+            
+            const targetPixelX = ratioX * totalWidth;
+            wrapper.scrollLeft = targetPixelX - (wrapper.clientWidth / 2);
+            
+            // Optional: Show a quick toast notification
+            showToast(`Jumped to Km ${formatChainage(closest.chainage)}`);
+        });
+
+        elements.jumpChainageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') elements.btnJumpChainage.click();
+        });
+    }
+
+    // Grab-to-Pan Logic
+    if (elements.chartScrollWrapper) {
+        const wrapper = elements.chartScrollWrapper;
+        let isDown = false;
+        let startX, startY;
+        let scrollLeft, scrollTop;
+
+        wrapper.addEventListener('mousedown', (e) => {
+            isDown = true;
+            wrapper.style.cursor = 'grabbing';
+            startX = e.pageX - wrapper.offsetLeft;
+            startY = e.pageY - wrapper.offsetTop;
+            scrollLeft = wrapper.scrollLeft;
+            scrollTop = wrapper.scrollTop;
+        });
+
+        wrapper.addEventListener('mouseleave', () => {
+            isDown = false;
+            wrapper.style.cursor = 'grab';
+        });
+
+        wrapper.addEventListener('mouseup', () => {
+            isDown = false;
+            wrapper.style.cursor = 'grab';
+        });
+
+        wrapper.addEventListener('mousemove', (e) => {
+            if (!isDown) return;
+            e.preventDefault();
+            const x = e.pageX - wrapper.offsetLeft;
+            const y = e.pageY - wrapper.offsetTop;
+            const walkX = (x - startX) * 1.5; // Multiply by 1.5 for faster panning
+            const walkY = (y - startY) * 1.5;
+            wrapper.scrollLeft = scrollLeft - walkX;
+            wrapper.scrollTop = scrollTop - walkY;
         });
     }
 
@@ -164,13 +285,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Excel Import
-    const btnImport = document.getElementById('btn-import-excel');
-    const fileInput = document.getElementById('excel-upload');
-    if (btnImport && fileInput) {
-        btnImport.addEventListener('click', () => fileInput.click());
-        fileInput.addEventListener('change', handleExcelImport);
-    }
 
     // === Core Logic ===
 
@@ -877,40 +991,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderChart() {
-        if (appState.results4m.length === 0) return;
+        if (!elements.chartCanvas || appState.results4m.length === 0) return;
 
-        let filteredData = appState.results4m;
-        const scaleVal = elements.chartScale ? elements.chartScale.value : 'full';
+        let filteredData = appState.results4m; // Plot everything
         
-        if (scaleVal !== 'full') {
-            const windowSize = parseInt(scaleVal);
-            const startDist = appState.chartChunkIndex * windowSize;
-            const endDist = startDist + windowSize;
-            
-            filteredData = appState.results4m.filter(r => r.globalDist >= startDist && r.globalDist <= endDist);
-            
-            // Handle edge case where filteredData is empty
-            if (filteredData.length === 0 && appState.chartChunkIndex > 0) {
-                appState.chartChunkIndex--;
-                return renderChart(); // Recurse back
-            }
-
-            // Update UI buttons
-            if (elements.btnChartPrev) elements.btnChartPrev.disabled = appState.chartChunkIndex === 0;
-            
-            // Check if there's data beyond this window
-            const maxDist = appState.results4m[appState.results4m.length - 1].globalDist;
-            if (elements.btnChartNext) elements.btnChartNext.disabled = endDist >= maxDist;
-            
-            if (filteredData.length > 0 && elements.chartRangeLabel) {
-                const chStart = formatChainage(filteredData[0].chainage);
-                const chEnd = formatChainage(filteredData[filteredData.length - 1].chainage);
-                elements.chartRangeLabel.textContent = `${chStart} to ${chEnd}`;
-            }
-        } else {
-            if (elements.btnChartPrev) elements.btnChartPrev.disabled = true;
-            if (elements.btnChartNext) elements.btnChartNext.disabled = true;
-            if (elements.chartRangeLabel) elements.chartRangeLabel.textContent = "All Chainages";
+        // Ensure chart inner container respects current slider values
+        if (elements.zoomX && elements.zoomY && elements.chartInnerContainer) {
+            elements.chartInnerContainer.style.width = `${elements.zoomX.value}%`;
+            elements.chartInnerContainer.style.height = `${elements.zoomY.value}%`;
         }
 
         const labels = filteredData.map(r => formatChainage(r.chainage));
@@ -959,7 +1047,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 interaction: { mode: 'index', intersect: false },
                 scales: {
                     x: {
-                        ticks: { color: '#94a3b8', maxTicksLimit: 20 },
+                        ticks: { 
+                            color: '#94a3b8', 
+                            maxTicksLimit: elements.zoomX ? Math.floor(20 * (elements.zoomX.value / 100)) : 20 
+                        },
                         grid: { color: 'rgba(255,255,255,0.05)' }
                     },
                     y: {
@@ -1050,7 +1141,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
         reader.readAsArrayBuffer(file);
-        fileInput.value = '';
+        e.target.value = ''; // Reset input to allow re-importing the same file
     }
 
     function downloadTemplate() {

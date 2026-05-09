@@ -25,7 +25,7 @@
                 <h1 style="display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 5px;">
                     <i class="fa-solid fa-train-tram" style="color: #60a5fa;"></i> TrackLift Pro
                     <span id="app-version" class="version-tag"
-                        style="font-size: 0.45em; background: rgba(59, 130, 246, 0.2); color: #93c5fd; padding: 4px 10px; border-radius: 12px; font-weight: 600;">v1.0.2</span>
+                        style="font-size: 0.45em; background: rgba(59, 130, 246, 0.2); color: #93c5fd; padding: 4px 10px; border-radius: 12px; font-weight: 600;">v1.0.3</span>
                 </h1>
                 <p class="subtitle" style="font-size: 1.15rem;">Vertical Profile Optimization Platform</p>
             </div>
@@ -171,27 +171,32 @@
                 </div>
 
                 <!-- Full Width Graph inside Results Section -->
-                <div class="chart-controls" style="display: flex; gap: 15px; align-items: center; margin-bottom: 15px; background: rgba(0,0,0,0.2); padding: 10px 15px; border-radius: 8px; border: 1px solid var(--card-border);">
-                    <label style="color: #94a3b8; font-weight: 600;">Graph Scale:</label>
-                    <select id="chart-scale" style="background: var(--input-bg); color: var(--text-main); border: 1px solid var(--card-border); border-radius: 4px; padding: 5px 10px;">
-                        <option value="full">Full Stretch</option>
-                        <option value="1000">1 km</option>
-                        <option value="500">500 m</option>
-                        <option value="200">200 m</option>
-                        <option value="100">100 m</option>
-                        <option value="50">50 m</option>
-                        <option value="20">20 m</option>
-                    </select>
+                <div class="chart-controls" style="display: flex; gap: 15px; align-items: center; margin-bottom: 10px; background: rgba(0,0,0,0.2); padding: 10px 15px; border-radius: 8px; border: 1px solid var(--card-border); flex-wrap: wrap;">
+                    <label style="color: #94a3b8; font-weight: 600; white-space: nowrap;"><i class="fa-solid fa-arrows-left-right"></i> Horizontal Zoom:</label>
+                    <input type="range" id="zoom-x" min="100" max="750" value="100" style="flex-grow: 1; min-width: 200px; cursor: pointer;">
+                    <span id="zoom-x-val" style="color: #93c5fd; font-weight: 600; width: 60px; text-align: right; margin-right: 10px;">100%</span>
                     
-                    <div style="flex-grow: 1;"></div>
+                    <div style="width: 1px; height: 24px; background: rgba(255,255,255,0.1); margin: 0 5px;"></div>
                     
-                    <button id="btn-chart-prev" class="btn secondary small" disabled><i class="fa-solid fa-chevron-left"></i> Prev</button>
-                    <span id="chart-range-label" style="color: #93c5fd; font-weight: 600; min-width: 150px; text-align: center;">All Chainages</span>
-                    <button id="btn-chart-next" class="btn secondary small" disabled>Next <i class="fa-solid fa-chevron-right"></i></button>
+                    <label style="color: #94a3b8; font-weight: 600; white-space: nowrap;"><i class="fa-solid fa-magnifying-glass"></i> Jump to Km:</label>
+                    <input type="text" id="jump-chainage-input" placeholder="e.g. 104.500" style="width: 120px; padding: 6px 10px; border-radius: 4px; border: 1px solid var(--card-border); background: var(--input-bg); color: var(--text-main);">
+                    <button id="btn-jump-chainage" class="btn primary small" style="padding: 6px 15px; border-radius: 4px;">Go</button>
                 </div>
 
-                <div class="canvas-container" style="width: 100%; height: 400px; margin-bottom: 2rem; background: var(--input-bg); border-radius: 8px; border: 1px solid var(--card-border); padding: 10px;">
-                    <canvas id="profile-chart"></canvas>
+                <div style="display: flex; gap: 15px; margin-bottom: 2rem;">
+                    <!-- Vertical Slider Container -->
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.2); padding: 15px 10px; border-radius: 8px; border: 1px solid var(--card-border);">
+                        <label style="color: #94a3b8; font-weight: 600; margin-bottom: 15px; writing-mode: vertical-rl; transform: rotate(180deg); display: flex; align-items: center; gap: 8px;">Vertical Zoom <i class="fa-solid fa-arrows-up-down" style="transform: rotate(90deg);"></i></label>
+                        <input type="range" id="zoom-y" min="100" max="1000" value="100" style="writing-mode: bt-lr; -webkit-appearance: slider-vertical; height: 300px; cursor: pointer; width: 8px;">
+                        <span id="zoom-y-val" style="color: #93c5fd; font-weight: 600; margin-top: 15px; writing-mode: vertical-rl; transform: rotate(180deg);">100%</span>
+                    </div>
+                    
+                    <!-- Graph Scrollable Area -->
+                    <div id="chart-scroll-wrapper" style="flex-grow: 1; height: 500px; background: var(--input-bg); border-radius: 8px; border: 1px solid var(--card-border); overflow: auto; position: relative; cursor: grab;">
+                        <div id="chart-inner-container" style="width: 100%; height: 100%; min-width: 100%; min-height: 100%; padding: 15px; box-sizing: border-box; position: relative;">
+                            <canvas id="profile-chart"></canvas>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="summary-stats">
@@ -342,8 +347,18 @@
             </div>
             <div class="modal-body" style="text-align: left;">
                 <div style="margin-bottom: 20px; border-left: 4px solid #3b82f6; padding-left: 15px;">
-                    <h4 style="margin-bottom: 5px; color: #93c5fd;">Version 1.0.2 (Current)</h4>
+                    <h4 style="margin-bottom: 5px; color: #93c5fd;">Version 1.0.3 (Current)</h4>
                     <ul style="padding-left: 20px; font-size: 0.95rem;">
+                        <li>Added dual-slider zoom (horizontal and vertical) with anchored center panning.</li>
+                        <li>Implemented native grab-to-pan dragging for smooth navigation.</li>
+                        <li>Added "Jump to Km" search functionality for instant chainage locating.</li>
+                        <li>Dynamically scaling X-axis labels based on horizontal zoom.</li>
+                        <li>Fixed a bug where the Excel import dialog would trigger twice.</li>
+                    </ul>
+                </div>
+                <div style="margin-bottom: 20px; opacity: 0.8; border-left: 4px solid #94a3b8; padding-left: 15px;">
+                    <h4 style="margin-bottom: 5px;">Version 1.0.2</h4>
+                    <ul style="padding-left: 20px; font-size: 0.9rem;">
                         <li>Updated application icon to transparent version.</li>
                         <li>Cleaned up Project Details panel (removed LH/RH and LOA columns).</li>
                         <li>Added technical documentation for Long/Short Kms and Chainage formats in Help menu.</li>
