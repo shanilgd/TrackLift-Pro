@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Railway Line Vertical Alignment Smoother & Chord Inspector</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+    <div class="background-globes">
+        <div class="globe globe-1"></div>
+        <div class="globe globe-2"></div>
+        <div class="globe globe-3"></div>
+    </div>
+
+    <div class="app-container">
+        <header>
+            <div>
+                <h1>
+                    <i class="fa-solid fa-train" style="color: #60a5fa;"></i> TrackLift Pro
+                    <span id="app-version" class="version-tag">v1.0.0</span>
+                </h1>
+                <p class="subtitle">Vertical Rail Profile Optimizer</p>
+            </div>
+            <div class="header-actions">
+                <button id="btn-check-updates" class="btn secondary">
+                    <i class="fa-solid fa-cloud-arrow-down" style="color: #60a5fa;"></i> Updates
+                </button>
+                <button id="btn-credits" class="btn secondary">
+                    <i class="fa-solid fa-star" style="color: #fbbf24;"></i> Credits
+                </button>
+                <button id="btn-changelog" class="btn secondary">
+                    <i class="fa-solid fa-list" style="color: #34d399;"></i> Change log
+                </button>
+                <button id="btn-help" class="btn secondary" style="border-radius: 50%; width: 42px; height: 42px; padding: 0;">
+                    <i class="fa-solid fa-circle-question" style="color: #a78bfa; font-size: 1.2rem;"></i>
+                </button>
+            </div>
+        </header>
+
+        <main>
+            <!-- Project Details Section -->
+            <section class="card project-card">
+                <div class="card-header">
+                    <h2><i class="fa-solid fa-briefcase"></i> Project Details</h2>
+                </div>
+                <div class="config-grid">
+                    <div class="input-group">
+                        <label>Zone</label>
+                        <input type="text" id="proj-zone" placeholder="e.g. SR" value="SR">
+                    </div>
+                    <div class="input-group">
+                        <label>Division</label>
+                        <input type="text" id="proj-division" placeholder="e.g. MAS" value="MAS">
+                    </div>
+                    <div class="input-group">
+                        <label>PWAY Section</label>
+                        <input type="text" id="proj-pway" placeholder="e.g. SPE" value="SPE">
+                    </div>
+                    <div class="input-group">
+                        <label>Block Section</label>
+                        <input type="text" id="proj-block" placeholder="e.g. MAS-GDR" value="MAS-GDR">
+                    </div>
+                    <div class="input-group">
+                        <label>Line/Track</label>
+                        <input type="text" id="proj-line" placeholder="e.g. UP" value="UP">
+                    </div>
+                    <div class="input-group">
+                        <label>Km Range</label>
+                        <input type="text" id="proj-km" placeholder="e.g. 100-101" value="100-101">
+                    </div>
+                    <div class="input-group">
+                        <label>LOA No</label>
+                        <input type="text" id="proj-loa" placeholder="e.g. 123/2026" value="123/2026">
+                    </div>
+                </div>
+            </section>
+
+            <!-- Configuration & Constraints Section -->
+            <section class="card config-card">
+                <div class="card-header">
+                    <h2><i class="fa-solid fa-sliders"></i> Configuration & Constraints</h2>
+                </div>
+                <div class="config-grid">
+                    <div class="input-group">
+                        <label for="start-chainage">Start Chainage (e.g. 500.0000)</label>
+                        <input type="text" id="start-chainage" placeholder="500.0000" value="500.0000">
+                    </div>
+                    <div class="input-group">
+                        <label for="end-chainage">End Chainage (e.g. 500.1000)</label>
+                        <input type="text" id="end-chainage" placeholder="500.1000" value="500.1000">
+                    </div>
+                    <div class="input-group">
+                        <label for="interval">Station Interval (m)</label>
+                        <input type="number" id="interval" placeholder="10" value="10" step="10" min="10" max="100">
+                    </div>
+                    <div class="input-group">
+                        <label for="max-lift">Max Track Lift (mm)</label>
+                        <input type="number" id="max-lift" placeholder="50" value="50" min="0" max="500">
+                    </div>
+                    <div class="input-group">
+                        <label for="max-lower">Max Track Lowering (mm)</label>
+                        <input type="number" id="max-lower" placeholder="50" value="50" min="0" max="500">
+                    </div>
+                </div>
+
+                <div class="config-grid" style="margin-top: 1rem; border-top: 1px solid var(--card-border); padding-top: 1rem;">
+                    <div class="input-group">
+                        <label for="limit-v20">20m Chord Versine Limit (mm)</label>
+                        <input type="number" id="limit-v20" placeholder="5" value="5" min="1" max="100">
+                    </div>
+                    <div class="input-group">
+                        <label for="limit-v80">80m Chord Versine Limit (mm)</label>
+                        <input type="number" id="limit-v80" placeholder="40" value="40" min="5" max="200">
+                    </div>
+                    <div class="input-group">
+                        <label for="limit-sd20">20m SD Limit (per 200m block) (mm)</label>
+                        <input type="number" id="limit-sd20" placeholder="2" value="2" min="0.5" max="50" step="0.1">
+                    </div>
+                    <div class="input-group">
+                        <label for="limit-sd80">80m SD Limit (per 200m block) (mm)</label>
+                        <input type="number" id="limit-sd80" placeholder="20" value="20" min="1" max="100">
+                    </div>
+                </div>
+
+                <div class="action-bar">
+                    <div class="help-text">
+                        * Note: Chainage formats can be K+M (e.g. 500+010), Km decimal (e.g. 500.0100), or simple meters.
+                    </div>
+                    <div class="action-buttons">
+                        <button id="btn-generate" class="btn primary">
+                            <i class="fa-solid fa-table-cells"></i> Generate Grid
+                        </button>
+                        <button id="btn-download-template" class="btn secondary">
+                            <i class="fa-solid fa-file-excel"></i> Template
+                        </button>
+                        <input type="file" id="excel-upload" accept=".xlsx, .xls" style="display: none;">
+                        <button id="btn-import-excel" class="btn secondary">
+                            <i class="fa-solid fa-file-import"></i> Import Excel
+                        </button>
+                        <button id="btn-reset" class="btn secondary" style="background-color: var(--danger); color: white;">
+                            <i class="fa-solid fa-rotate-right"></i> Reset
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Optimizer Control Card -->
+            <section id="optimizer-section" class="card hidden">
+                <div class="card-header">
+                    <h2><i class="fa-solid fa-bolt"></i> Alignment Optimization Engine</h2>
+                    <div class="action-buttons">
+                        <button id="btn-run-solver" class="btn success">
+                            <i class="fa-solid fa-play"></i> Run Auto-Smoother
+                        </button>
+                        <button id="btn-stop-solver" class="btn danger hidden">
+                            <i class="fa-solid fa-stop"></i> Stop
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Optimization Parameters -->
+                <div class="config-grid">
+                    <div class="input-group">
+                        <label for="opt-smooth-weight">Smoothness Emphasis Factor</label>
+                        <select id="opt-smooth-weight">
+                            <option value="1">Low (Allows more level changes, fits existing track closer)</option>
+                            <option value="10" selected>Medium (Standard track alignment smoothing)</option>
+                            <option value="50">High (Flattens humps/dips aggressively, pushes towards limits)</option>
+                            <option value="200">Extreme (Very flat vertical profile, maximum possible smoothing)</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="opt-iterations">Max Iterations</label>
+                        <input type="number" id="opt-iterations" value="1000" min="100" max="10000" step="100">
+                    </div>
+                    <div class="input-group">
+                        <label>Endpoint Boundary Conditions</label>
+                        <div style="font-size: 0.9rem; margin-top: 0.5rem; color: var(--text-muted);">
+                            <i class="fa-solid fa-lock" style="color: var(--warning);"></i> <b>Locked (0 lift/lower)</b> for first/last stations.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Progress bar -->
+                <div id="solver-progress-card" class="progress-card hidden">
+                    <div class="progress-container">
+                        <div class="progress-bar-bg">
+                            <div id="solver-progress-fill" class="progress-bar-fill"></div>
+                        </div>
+                        <span id="solver-progress-text" class="progress-text">Optimizing: 0%</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Dashboard Summary Statistics Section -->
+            <section id="stats-section" class="card hidden">
+                <div class="card-header">
+                    <h2><i class="fa-solid fa-chart-pie"></i> Optimization & Compliance Dashboard</h2>
+                </div>
+                <div class="summary-stats">
+                    <div id="stat-compliance" class="stat-box">
+                        <span class="stat-label">Compliance Status</span>
+                        <span id="val-compliance" class="stat-value">-</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-label">Max Lift Achieved</span>
+                        <span id="val-max-lift" class="stat-value">0.0 mm</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-label">Max Lower Achieved</span>
+                        <span id="val-max-lower" class="stat-value">0.0 mm</span>
+                    </div>
+                    <div id="stat-v20" class="stat-box">
+                        <span class="stat-label">Max 20m Versine</span>
+                        <span id="val-max-v20" class="stat-value">0.0 mm</span>
+                    </div>
+                    <div id="stat-v80" class="stat-box">
+                        <span class="stat-label">Max 80m Versine</span>
+                        <span id="val-max-v80" class="stat-value">0.0 mm</span>
+                    </div>
+                    <div id="stat-sd20" class="stat-box">
+                        <span class="stat-label">Max 20m Block SD</span>
+                        <span id="val-max-sd20" class="stat-value">0.0 mm</span>
+                    </div>
+                    <div id="stat-sd80" class="stat-box">
+                        <span class="stat-label">Max 80m Block SD</span>
+                        <span id="val-max-sd80" class="stat-value">0.0 mm</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Chart / Profile Section -->
+            <section id="chart-section" class="card hidden">
+                <div class="card-header">
+                    <h2><i class="fa-solid fa-chart-line"></i> Vertical Alignment Profiles</h2>
+                </div>
+                
+                <!-- Top Horizontal Zoom Control -->
+                <div class="top-zoom-container" style="display: flex; justify-content: space-between; align-items: center; gap: 15px; flex-wrap: wrap;">
+                    <div class="zoom-group-horizontal" style="flex: 1; display: flex; align-items: center; gap: 15px; min-width: 250px;">
+                        <label for="zoom-horizontal-slider"><i class="fa-solid fa-magnifying-glass-plus"></i> Horizontal Zoom</label>
+                        <input type="range" id="zoom-horizontal-slider" min="1" max="100" value="1">
+                    </div>
+                    <div class="chart-shortcuts-info" style="font-size: 0.8rem; color: var(--text-muted); display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+                        <span><i class="fa-solid fa-mouse-pointer" style="color: #60a5fa;"></i> Drag: Pan X/Y</span>
+                        <span><i class="fa-solid fa-sliders" style="color: #a78bfa;"></i> Sliders: Zoom H/V</span>
+                        <span><i class="fa-solid fa-rotate-left" style="color: #fbbf24;"></i> Double-click: Reset</span>
+                        <button id="btn-reset-view" class="btn secondary" style="padding: 2px 10px; font-size: 0.75rem; height: 26px; border-radius: 6px;">
+                            Reset View
+                        </button>
+                    </div>
+                </div>
+
+                <div class="charts-layout-container">
+                    <!-- Left Vertical Zoom Control -->
+                    <div class="vertical-zoom-container">
+                        <span class="vertical-zoom-label"><i class="fa-solid fa-arrows-up-down"></i> Vert Zoom</span>
+                        <div class="vertical-slider-wrapper">
+                            <input type="range" id="zoom-vertical-left-slider" min="1" max="100" value="10">
+                        </div>
+                        <span id="val-vertical-zoom">10x</span>
+                    </div>
+
+                    <!-- Canvases -->
+                    <div class="charts-canvas-container">
+                        <div style="position: relative; height: 500px; width: 100%;">
+                            <canvas id="profile-chart"></canvas>
+                        </div>
+                        <div style="position: relative; height: 280px; width: 100%; margin-top: 1rem;">
+                            <canvas id="lift-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Table & Data Entry Section -->
+            <section id="data-section" class="card hidden">
+                <div class="card-header" style="flex-wrap: wrap; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                        <h2><i class="fa-solid fa-pen-to-square"></i> Rail Level Inspector</h2>
+                        <div class="search-container">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" id="table-search" placeholder="Search Chainage...">
+                        </div>
+                    </div>
+                    <div class="action-buttons">
+                        <button id="btn-export-pdf" class="btn secondary">
+                            <i class="fa-solid fa-file-pdf"></i> Export PDF Report
+                        </button>
+                        <button id="btn-export-excel" class="btn secondary">
+                            <i class="fa-solid fa-file-excel"></i> Export Excel
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-scroller">
+                    <table id="levels-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 60px;">Lock</th>
+                                <th style="width: 80px;">No.</th>
+                                <th>Chainage</th>
+                                <th>Existing Level (m)</th>
+                                <th>Proposed Level (m)</th>
+                                <th>Lift (+)/Lower (-) (mm)</th>
+                                <th>20m Versine (mm)</th>
+                                <th>80m Versine (mm)</th>
+                                <th>20m Block SD (mm)</th>
+                                <th>80m Block SD (mm)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="levels-table-body">
+                            <!-- Dynamic rows loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+
+        <!-- Updates Modal -->
+        <div id="update-modal" class="modal hidden">
+            <div class="modal-content" style="max-width: 400px; text-align: center;">
+                <span class="close-modal" id="close-update">&times;</span>
+                <div class="modal-header" style="justify-content: center; border-bottom: none; margin-bottom: 1rem; padding-bottom: 0;">
+                    <h2><i class="fa-solid fa-cloud-arrow-down" style="color: #60a5fa;"></i> Update Available</h2>
+                </div>
+                <div class="modal-body" style="padding: 10px 0;">
+                    <p id="update-version-text" style="font-size: 1.1rem; margin-bottom: 1.5rem;">A new version is available!</p>
+                    
+                    <div id="update-progress-container" class="hidden" style="margin-bottom: 1.5rem;">
+                        <div class="progress-bar-bg" style="height: 12px; background: rgba(0,0,0,0.3); border-radius: 6px; overflow: hidden;">
+                            <div id="update-progress-fill" style="height: 100%; width: 0%; background: var(--success); transition: width 0.2s;"></div>
+                        </div>
+                        <p id="update-progress-text" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 5px;">Downloading: 0%</p>
+                    </div>
+
+                    <div style="display: flex; justify-content: center; gap: 15px;">
+                        <button id="btn-update-download" class="btn primary">Download Update</button>
+                        <button id="btn-update-install" class="btn success hidden">Install & Restart</button>
+                        <button id="btn-update-cancel" class="btn secondary">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Credits Modal -->
+        <div id="credits-modal" class="modal hidden">
+            <div class="modal-content" style="max-width: 420px; text-align: center;">
+                <span class="close-modal" id="close-credits">&times;</span>
+                <div class="modal-header" style="justify-content: center; border-bottom: none; margin-bottom: 1rem; padding-bottom: 0;">
+                    <h2><i class="fa-solid fa-star" style="color: #fbbf24;"></i> Credits</h2>
+                </div>
+                <div class="modal-body" style="line-height: 1.6; padding: 10px 0;">
+                    <p style="font-size: 1.2rem; font-weight: 600; margin-bottom: 0.5rem;">TrackLift Pro</p>
+                    <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 1.5rem;">Version 1.0.0</p>
+                    <p>Designed and Programmed by</p>
+                    <p style="font-size: 1.15rem; font-weight: 700; color: #60a5fa;">SHANIL G D (SSE PWAY)</p>
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.5rem;">Southern Railway, India</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Changelog Modal -->
+        <div id="changelog-modal" class="modal hidden">
+            <div class="modal-content" style="max-width: 550px;">
+                <span class="close-modal" id="close-changelog">&times;</span>
+                <div class="modal-header">
+                    <h2><i class="fa-solid fa-clock-rotate-left"></i> Version History</h2>
+                </div>
+                <div class="modal-body" style="max-height: 400px; overflow-y: auto; text-align: left; line-height: 1.5;">
+                    <div style="margin-bottom: 1.5rem;">
+                        <h3 style="color: #60a5fa; margin-bottom: 0.25rem;">v1.0.0 (May 2026)</h3>
+                        <ul style="padding-left: 1.25rem;">
+                            <li>Initial release of TrackLift Pro.</li>
+                            <li>Projected Gradient Descent (PGD) optimization solver for rail level smoothing.</li>
+                            <li>Constraint compliance tracking for 20m and 80m chord versines.</li>
+                            <li>Sliding window Standard Deviation checks (200m block).</li>
+                            <li>Dynamic profile graphs with horizontal panning, window controls, and vertical exaggeration slider.</li>
+                            <li>Excel and PDF report export integration.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Help Modal -->
+        <div id="help-modal" class="modal hidden">
+            <div class="modal-content" style="max-width: 800px; text-align: left;">
+                <span class="close-modal" id="close-help">&times;</span>
+                <div class="modal-header" style="border-bottom: 1px solid var(--card-border); margin-bottom: 1.5rem; padding-bottom: 0.75rem;">
+                    <h2><i class="fa-solid fa-circle-question" style="color: #a78bfa;"></i> User Manual & Technical Reference</h2>
+                </div>
+                <div class="modal-body" style="line-height: 1.6; max-height: 70vh; overflow-y: auto; padding-right: 10px;">
+                    <h3 style="color: #60a5fa; margin-bottom: 0.5rem;">1. Overview</h3>
+                    <p style="margin-bottom: 1rem;">
+                        This software optimizes the vertical profile (rail levels) of a railway line. The goals are:
+                        (a) maximize smoothness to ensure high-speed riding comfort,
+                        (b) minimize lifts/lowers (deviation from the existing rail level) to facilitate maintenance on a running track,
+                        (c) ensure that vertical versines and block-wise standard deviations stay strictly within safety limits.
+                    </p>
+
+                    <h3 style="color: #60a5fa; margin-bottom: 0.5rem;">2. Versine Calculation (Vertical Unevenness)</h3>
+                    <p style="margin-bottom: 0.5rem;">
+                        The vertical versine at station $i$ on a chord of length $L$ is calculated as the vertical offset of the rail level at station $i$ relative to the chord drawn between stations $(i - k)$ and $(i + k)$, where $2k \times \text{Interval} = L$.
+                    </p>
+                    <ul style="padding-left: 1.5rem; margin-bottom: 1rem;">
+                        <li><b>20m Chord:</b> Evaluated using station $i$ as midpoint, and $(i - 1)$ and $(i + 1)$ as endpoints (for 10m intervals, $k = 1$). $V_{20} = P_i - \frac{P_{i-1} + P_{i+1}}{2}$. Max limit: <b>5.0 mm</b>.</li>
+                        <li><b>80m Chord:</b> Evaluated using station $i$ as midpoint, and $(i - 4)$ and $(i + 4)$ as endpoints (for 10m intervals, $k = 4$). $V_{80} = P_i - \frac{P_{i-4} + P_{i+4}}{2}$. Max limit: <b>40.0 mm</b>.</li>
+                    </ul>
+
+                    <h3 style="color: #60a5fa; margin-bottom: 0.5rem;">3. Standard Deviation (SD) in 200m Blocks</h3>
+                    <p style="margin-bottom: 1rem;">
+                        Standard deviation is calculated over a sliding window of 200 meters. For 10m station intervals, this represents a block of 20 intervals (21 stations). The standard deviation of the versines calculated within this block must satisfy:
+                        <br>&bull; 20m Chord SD: <b>&le; 2.0 mm</b>.
+                        <br>&bull; 80m Chord SD: <b>&le; 20.0 mm</b>.
+                    </p>
+
+                    <h3 style="color: #60a5fa; margin-bottom: 0.5rem;">4. Boundary Conditions</h3>
+                    <p style="margin-bottom: 1rem;">
+                        The endpoints (first and last stations) are locked to the existing track level (lift/lower = 0) to ensure a smooth, hardware-compatible transition to the existing track. For 80m chords, the first 4 and last 4 stations cannot have their 80m versine calculated fully (due to chord endpoints extending beyond the data set). These boundary chord limits are handled gracefully by omitting/clamping the outer nodes from SD calculations.
+                    </p>
+
+                    <h3 style="color: #60a5fa; margin-bottom: 0.5rem;">5. How to Use</h3>
+                    <ol style="padding-left: 1.5rem; margin-bottom: 1rem;">
+                        <li>Specify the start/end chainage and click <b>Generate Grid</b> to enter data manually, or click <b>Template</b> to download a blank Excel template.</li>
+                        <li>Import your existing rail levels using <b>Import Excel</b>.</li>
+                        <li>Adjust constraints (max lift, max lower, versine limits) as desired.</li>
+                        <li>Click <b>Run Auto-Smoother</b>. The solver will run a Projected Gradient Descent with Adam Optimizer to find the smoothest profile that complies with all limits.</li>
+                        <li>If necessary, manually lock specific station levels or edit the Proposed levels in the table. The profile chart, lifts, versines, and compliance stats will update instantly!</li>
+                        <li>Export a detailed PDF engineering report or Excel spreadsheet.</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+
+        <!-- Custom Table Tooltip -->
+        <div id="custom-table-tooltip" class="custom-table-tooltip"></div>
+
+        <!-- Toast Notification -->
+        <div id="toast" class="toast hidden">
+            <i class="fa-solid fa-circle-check"></i>
+            <span id="toast-message">Action completed successfully.</span>
+        </div>
+
+        <footer>
+            <p>Built by SHANIL G D (SSE PWAY) &copy; 2026. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <!-- Pre-packaged Libraries -->
+    <script src="lib/chart.js"></script>
+    <script src="lib/xlsx.full.min.js"></script>
+    <script src="lib/jspdf.umd.min.js"></script>
+    <script src="lib/jspdf.plugin.autotable.min.js"></script>
+    <!-- Frontend logic -->
+    <script src="script.js"></script>
+</body>
+
+</html>
