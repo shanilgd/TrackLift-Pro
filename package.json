@@ -1,6 +1,6 @@
 {
-  "name": "railway-alignment-smoother",
-  "version": "1.0.0",
+  "name": "TrackLift-Pro",
+  "version": "1.0.1",
   "productName": "TrackLift Pro",
   "description": "Railway Line Vertical Alignment Smoother and Chord Inspector",
   "main": "main.js",
@@ -22,6 +22,7 @@
   "build": {
     "appId": "com.shanilgd.trackliftpro",
     "productName": "TrackLift Pro",
+    "artifactName": "TrackLift-Pro-Setup-${version}.${ext}",
     "directories": {
       "output": "dist"
     },
@@ -39,7 +40,7 @@
       {
         "provider": "github",
         "owner": "ShanilGD",
-        "repo": "TrackLiftPro"
+        "repo": "TrackLift-Pro"
       }
     ]
   }

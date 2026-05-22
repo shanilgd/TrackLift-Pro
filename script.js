@@ -29,8 +29,8 @@ document.addEventListener('DOMContentLoaded', () => {
         projPway: document.getElementById('proj-pway'),
         projBlock: document.getElementById('proj-block'),
         projLine: document.getElementById('proj-line'),
-        projKm: document.getElementById('proj-km'),
-        projLoa: document.getElementById('proj-loa'),
+        projKmFrom: document.getElementById('proj-km-from'),
+        projKmTo: document.getElementById('proj-km-to'),
         
         // Config inputs
         startChainage: document.getElementById('start-chainage'),
@@ -376,8 +376,8 @@ document.addEventListener('DOMContentLoaded', () => {
             appState.stations.push({
                 id: 'st_' + Math.random().toString(36).substr(2, 9),
                 chainage: ch,
-                existingLevel: 100.0,
-                proposedLevel: 100.0,
+                existingLevel: null,
+                proposedLevel: null,
                 locked: false
             });
             count++;
@@ -414,11 +414,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (profileChart) { profileChart.destroy(); profileChart = null; }
         if (liftChart) { liftChart.destroy(); liftChart = null; }
         
-        elements.startChainage.value = "500.0000";
-        elements.endChainage.value = "500.1000";
+        elements.startChainage.value = "500.000";
+        elements.endChainage.value = "500.100";
         elements.interval.value = "10";
         elements.maxLift.value = "50";
-        elements.maxLower.value = "50";
+        elements.maxLower.value = "0";
         elements.limitV20.value = "5";
         elements.limitV80.value = "40";
         elements.limitSD20.value = "2";
@@ -604,7 +604,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const limitSD80 = parseFloat(elements.limitSD80.value) || 20;
         
         appState.stations.forEach(st => {
-            st.liftLower = (st.proposedLevel - st.existingLevel) * 1000; // in mm
+            st.liftLower = (st.proposedLevel !== null && st.existingLevel !== null) ? (st.proposedLevel - st.existingLevel) * 1000 : 0; // in mm
             st.v20 = null;
             st.v80 = null;
             st.sd20 = null;
@@ -622,15 +622,19 @@ document.addEventListener('DOMContentLoaded', () => {
         // 1. Versines
         for (let i = 0; i < N; i++) {
             if (i >= k20 && i < N - k20) {
-                appState.stations[i].v20 = (appState.stations[i].proposedLevel - 0.5 * (appState.stations[i - k20].proposedLevel + appState.stations[i + k20].proposedLevel)) * 1000;
-                if (Math.abs(appState.stations[i].v20) > limitV20) {
-                    appState.stations[i].v20Violated = true;
+                if (appState.stations[i].proposedLevel !== null && appState.stations[i - k20].proposedLevel !== null && appState.stations[i + k20].proposedLevel !== null) {
+                    appState.stations[i].v20 = (appState.stations[i].proposedLevel - 0.5 * (appState.stations[i - k20].proposedLevel + appState.stations[i + k20].proposedLevel)) * 1000;
+                    if (Math.abs(appState.stations[i].v20) > limitV20) {
+                        appState.stations[i].v20Violated = true;
+                    }
                 }
             }
             if (i >= k80 && i < N - k80) {
-                appState.stations[i].v80 = (appState.stations[i].proposedLevel - 0.5 * (appState.stations[i - k80].proposedLevel + appState.stations[i + k80].proposedLevel)) * 1000;
-                if (Math.abs(appState.stations[i].v80) > limitV80) {
-                    appState.stations[i].v80Violated = true;
+                if (appState.stations[i].proposedLevel !== null && appState.stations[i - k80].proposedLevel !== null && appState.stations[i + k80].proposedLevel !== null) {
+                    appState.stations[i].v80 = (appState.stations[i].proposedLevel - 0.5 * (appState.stations[i - k80].proposedLevel + appState.stations[i + k80].proposedLevel)) * 1000;
+                    if (Math.abs(appState.stations[i].v80) > limitV80) {
+                        appState.stations[i].v80Violated = true;
+                    }
                 }
             }
         }
@@ -681,19 +685,21 @@ document.addEventListener('DOMContentLoaded', () => {
             // Entire dataset standard deviation
             const v20Vals = appState.stations.filter(st => st.v20 !== null).map(st => st.v20);
             const mean20 = v20Vals.length > 1 ? v20Vals.reduce((a,b)=>a+b,0)/v20Vals.length : 0;
-            const sd20 = v20Vals.length > 1 ? Math.sqrt(v20Vals.reduce((sum, v) => sum + Math.pow(v - mean20, 2), 0) / v20Vals.length) : 0;
+            const var20 = v20Vals.length > 1 ? v20Vals.reduce((sum, v) => sum + Math.pow(v - mean20, 2), 0) / v20Vals.length : 0;
+            const sd20 = v20Vals.length > 1 ? Math.sqrt(var20) : 0;
             
             const v80Vals = appState.stations.filter(st => st.v80 !== null).map(st => st.v80);
             const mean80 = v80Vals.length > 1 ? v80Vals.reduce((a,b)=>a+b,0)/v80Vals.length : 0;
-            const sd80 = v80Vals.length > 1 ? Math.sqrt(v80Vals.reduce((sum, v) => sum + Math.pow(v - mean80, 2), 0) / v80Vals.length) : 0;
+            const var80 = v80Vals.length > 1 ? v80Vals.reduce((sum, v) => sum + Math.pow(v - mean80, 2), 0) / v80Vals.length : 0;
+            const sd80 = v80Vals.length > 1 ? Math.sqrt(var80) : 0;
             
             appState.stations.forEach(st => {
                 st.sd20 = sd20;
                 st.sd80 = sd80;
                 st.sd20Violated = sd20 > limitSD20;
                 st.sd80Violated = sd80 > limitSD80;
-                st.sd20Details = { mean: mean20, count: v20Vals.length, startIdx: 0, endIdx: N-1 };
-                st.sd80Details = { mean: mean80, count: v80Vals.length, startIdx: 0, endIdx: N-1 };
+                st.sd20Details = { mean: mean20, variance: var20, count: v20Vals.length, startIdx: 0, endIdx: N-1 };
+                st.sd80Details = { mean: mean80, variance: var80, count: v80Vals.length, startIdx: 0, endIdx: N-1 };
             });
         } else {
             const offset = Math.floor(windowSize / 2);
@@ -1550,7 +1556,22 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // 4. Existing Level
             const tdExist = document.createElement('td');
-            tdExist.textContent = st.existingLevel.toFixed(3);
+            const inputExist = document.createElement('input');
+            inputExist.type = "number";
+            inputExist.step = "0.001";
+            inputExist.className = "table-input";
+            inputExist.value = st.existingLevel !== null ? st.existingLevel.toFixed(3) : "";
+            inputExist.onchange = (e) => {
+                let val = parseFloat(e.target.value);
+                st.existingLevel = isNaN(val) ? null : val;
+                if (st.proposedLevel === null) {
+                    st.proposedLevel = st.existingLevel;
+                }
+                calculateMetrics();
+                updateChart();
+                rebuildTable();
+            };
+            tdExist.appendChild(inputExist);
             tr.appendChild(tdExist);
             
             // 5. Proposed Level (Input)
@@ -1559,11 +1580,10 @@ document.addEventListener('DOMContentLoaded', () => {
             inputProp.type = "number";
             inputProp.step = "0.001";
             inputProp.className = "table-input";
-            inputProp.value = st.proposedLevel.toFixed(3);
+            inputProp.value = st.proposedLevel !== null ? st.proposedLevel.toFixed(3) : "";
             inputProp.onchange = (e) => {
                 let val = parseFloat(e.target.value);
-                if (isNaN(val)) val = st.existingLevel;
-                st.proposedLevel = val;
+                st.proposedLevel = isNaN(val) ? null : val;
                 
                 calculateMetrics();
                 updateChart();
@@ -1724,13 +1744,13 @@ document.addEventListener('DOMContentLoaded', () => {
         // Sheet 1: Title & Project details
         const detailsData = [
             ["PARAMETER", "DETAILS"],
-            ["Zone", elements.projZone.value || "-"],
-            ["Division", elements.projDivision.value || "-"],
-            ["PWAY Section", elements.projPway.value || "-"],
-            ["Block Section", elements.projBlock.value || "-"],
-            ["Line/Track", elements.projLine.value || "-"],
-            ["Km Range", elements.projKm.value || "-"],
-            ["LOA No", elements.projLoa.value || "-"]
+            ["Zone", elements.projZone.value || ""],
+            ["Division", elements.projDivision.value || ""],
+            ["PWAY Section", elements.projPway.value || ""],
+            ["Block Section", elements.projBlock.value || ""],
+            ["Line/Track", elements.projLine.value || ""],
+            ["Km From", elements.projKmFrom.value || ""],
+            ["Km To", elements.projKmTo.value || ""]
         ];
         const wsDetails = XLSX.utils.aoa_to_sheet(detailsData);
         wsDetails['!cols'] = [{ wch: 25 }, { wch: 35 }];
@@ -1806,13 +1826,13 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Project Details Table
             const details = [
-                ["Zone", elements.projZone.value || "-"],
-                ["Division", elements.projDivision.value || "-"],
-                ["PWAY Section", elements.projPway.value || "-"],
-                ["Block Section", elements.projBlock.value || "-"],
-                ["Line/Track", elements.projLine.value || "-"],
-                ["Km Range", elements.projKm.value || "-"],
-                ["LOA No", elements.projLoa.value || "-"]
+                ["Zone", elements.projZone.value || ""],
+                ["Division", elements.projDivision.value || ""],
+                ["PWAY Section", elements.projPway.value || ""],
+                ["Block Section", elements.projBlock.value || ""],
+                ["Line/Track", elements.projLine.value || ""],
+                ["Km From", elements.projKmFrom.value || ""],
+                ["Km To", elements.projKmTo.value || ""]
             ];
             
             doc.autoTable({
