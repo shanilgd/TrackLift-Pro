@@ -83,7 +83,7 @@
             </section>
 
             <!-- Configuration & Constraints Section -->
-            <section class="card config-card">
+            <section id="config-section" class="card config-card">
                 <div class="card-header">
                     <h2><i class="fa-solid fa-sliders"></i> Configuration & Constraints</h2>
                 </div>
@@ -151,11 +151,49 @@
                 </div>
             </section>
 
+            <!-- Data Entry Section -->
+            <section id="data-entry-section" class="card hidden">
+                <div class="card-header" style="flex-wrap: wrap; gap: 10px; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                        <h2><i class="fa-solid fa-pen-to-square"></i> Data Entry</h2>
+                        <div class="search-container">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" id="data-entry-search" placeholder="Search Chainage...">
+                        </div>
+                    </div>
+                    <button id="btn-goto-opt" class="btn secondary" style="font-size: 0.9rem;">
+                        <i class="fa-solid fa-arrow-down"></i> Go to Optimization Panel
+                    </button>
+                </div>
+                <div class="table-container">
+                    <table id="data-entry-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 60px;">Lock</th>
+                                <th style="width: 80px;">No.</th>
+                                <th>Chainage</th>
+                                <th>Existing Level (m)</th>
+                                <th>Proposed Level (m)</th>
+                                <th>Max Lift (mm)</th>
+                                <th>Max Lower (mm)</th>
+                                <th>Remark</th>
+                            </tr>
+                        </thead>
+                        <tbody id="data-entry-table-body">
+                            <!-- Dynamic rows loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
             <!-- Optimizer Control Card -->
             <section id="optimizer-section" class="card hidden">
                 <div class="card-header">
                     <h2><i class="fa-solid fa-bolt"></i> Alignment Optimization Engine</h2>
                     <div class="action-buttons">
+                        <button id="btn-back-to-config-top" class="btn secondary">
+                            <i class="fa-solid fa-arrow-up"></i> Back to Configuration
+                        </button>
                         <button id="btn-run-solver" class="btn success">
                             <i class="fa-solid fa-play"></i> Run Auto-Smoother
                         </button>
@@ -238,8 +276,14 @@
 
             <!-- Chart / Profile Section -->
             <section id="chart-section" class="card hidden">
-                <div class="card-header">
-                    <h2><i class="fa-solid fa-chart-line"></i> Vertical Alignment Profiles</h2>
+                <div class="card-header" style="flex-wrap: wrap; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                        <h2><i class="fa-solid fa-chart-line"></i> Vertical Alignment Profiles</h2>
+                        <div class="search-container">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" id="graph-search" placeholder="Go to Chainage (e.g. 500.520)">
+                        </div>
+                    </div>
                 </div>
                 
                 <!-- Top Horizontal Zoom Control -->
@@ -251,7 +295,6 @@
                     <div class="chart-shortcuts-info" style="font-size: 0.8rem; color: var(--text-muted); display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
                         <span><i class="fa-solid fa-mouse-pointer" style="color: #60a5fa;"></i> Drag: Pan X/Y</span>
                         <span><i class="fa-solid fa-sliders" style="color: #a78bfa;"></i> Sliders: Zoom H/V</span>
-                        <span><i class="fa-solid fa-rotate-left" style="color: #fbbf24;"></i> Double-click: Reset</span>
                         <button id="btn-reset-view" class="btn secondary" style="padding: 2px 10px; font-size: 0.75rem; height: 26px; border-radius: 6px;">
                             Reset View
                         </button>
@@ -263,9 +306,9 @@
                     <div class="vertical-zoom-container">
                         <span class="vertical-zoom-label"><i class="fa-solid fa-arrows-up-down"></i> Vert Zoom</span>
                         <div class="vertical-slider-wrapper">
-                            <input type="range" id="zoom-vertical-left-slider" min="1" max="100" value="10">
+                            <input type="range" id="zoom-vertical-left-slider" min="1" max="100" value="1">
                         </div>
-                        <span id="val-vertical-zoom">10x</span>
+                        <span id="val-vertical-zoom">1x</span>
                     </div>
 
                     <!-- Canvases -->
@@ -280,14 +323,14 @@
                 </div>
             </section>
 
-            <!-- Table & Data Entry Section -->
-            <section id="data-section" class="card hidden">
+            <!-- Result Section -->
+            <section id="result-section" class="card hidden">
                 <div class="card-header" style="flex-wrap: wrap; gap: 10px;">
                     <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
-                        <h2><i class="fa-solid fa-pen-to-square"></i> Rail Level Inspector</h2>
+                        <h2><i class="fa-solid fa-square-poll-vertical"></i> Optimization Results</h2>
                         <div class="search-container">
                             <i class="fa-solid fa-magnifying-glass"></i>
-                            <input type="text" id="table-search" placeholder="Search Chainage...">
+                            <input type="text" id="result-search" placeholder="Search Chainage...">
                         </div>
                     </div>
                     <div class="action-buttons">
@@ -300,8 +343,8 @@
                     </div>
                 </div>
 
-                <div class="table-scroller">
-                    <table id="levels-table">
+                <div class="table-container">
+                    <table id="result-table">
                         <thead>
                             <tr>
                                 <th style="width: 60px;">Lock</th>
@@ -309,17 +352,26 @@
                                 <th>Chainage</th>
                                 <th>Existing Level (m)</th>
                                 <th>Proposed Level (m)</th>
-                                <th>Lift (+)/Lower (-) (mm)</th>
-                                <th>20m Versine (mm)</th>
-                                <th>80m Versine (mm)</th>
-                                <th>20m Block SD (mm)</th>
-                                <th>80m Block SD (mm)</th>
+                                <th>Lift/Lower (mm)</th>
+                                <th>Exist. 20m Versine</th>
+                                <th>Prop. 20m Versine</th>
+                                <th>Exist. 20m SD</th>
+                                <th>Prop. 20m SD</th>
+                                <th>Exist. 80m Versine</th>
+                                <th>Prop. 80m Versine</th>
+                                <th>Exist. 80m SD</th>
+                                <th>Prop. 80m SD</th>
                             </tr>
                         </thead>
-                        <tbody id="levels-table-body">
+                        <tbody id="result-table-body">
                             <!-- Dynamic rows loaded here -->
                         </tbody>
                     </table>
+                </div>
+                <div style="margin-top: 1.5rem; display: flex; justify-content: flex-end;">
+                    <button id="btn-back-to-config-bottom" class="btn secondary">
+                        <i class="fa-solid fa-arrow-up"></i> Back to Configuration Panel
+                    </button>
                 </div>
             </section>
         </main>

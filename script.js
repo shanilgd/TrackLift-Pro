@@ -52,6 +52,12 @@ document.addEventListener('DOMContentLoaded', () => {
         excelUpload: document.getElementById('excel-upload'),
         btnReset: document.getElementById('btn-reset'),
         
+        // Navigation
+        configSection: document.getElementById('config-section'),
+        btnGotoOpt: document.getElementById('btn-goto-opt'),
+        btnBackToConfigTop: document.getElementById('btn-back-to-config-top'),
+        btnBackToConfigBottom: document.getElementById('btn-back-to-config-bottom'),
+        
         // Solver
         optimizerSection: document.getElementById('optimizer-section'),
         btnRunSolver: document.getElementById('btn-run-solver'),
@@ -74,17 +80,23 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Visualizer
         chartSection: document.getElementById('chart-section'),
+        graphSearch: document.getElementById('graph-search'),
         zoomHorizontalSlider: document.getElementById('zoom-horizontal-slider'),
         zoomVerticalLeftSlider: document.getElementById('zoom-vertical-left-slider'),
         valVerticalZoom: document.getElementById('val-vertical-zoom'),
         btnResetView: document.getElementById('btn-reset-view'),
         
-        // Table & Inspector
-        dataSection: document.getElementById('data-section'),
-        tableSearch: document.getElementById('table-search'),
+        // Data Entry
+        dataEntrySection: document.getElementById('data-entry-section'),
+        dataEntrySearch: document.getElementById('data-entry-search'),
+        dataEntryTableBody: document.getElementById('data-entry-table-body'),
+        
+        // Result Section
+        resultSection: document.getElementById('result-section'),
+        resultSearch: document.getElementById('result-search'),
         btnExportPdf: document.getElementById('btn-export-pdf'),
         btnExportExcel: document.getElementById('btn-export-excel'),
-        levelsTableBody: document.getElementById('levels-table-body'),
+        resultTableBody: document.getElementById('result-table-body'),
         
         // Toast
         toast: document.getElementById('toast'),
@@ -244,6 +256,31 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.btnImportExcel.addEventListener('click', () => elements.excelUpload.click());
         elements.excelUpload.addEventListener('change', handleExcelImport);
     }
+    
+    // --- Scroll Navigation Listeners ---
+    if (elements.btnGotoOpt) {
+        elements.btnGotoOpt.addEventListener('click', () => {
+            if (elements.optimizerSection && !elements.optimizerSection.classList.contains('hidden')) {
+                elements.optimizerSection.scrollIntoView({ behavior: 'smooth' });
+            } else {
+                showToast("Please generate grid or import data first to access Optimization Panel.", "warning");
+            }
+        });
+    }
+
+    const scrollToConfig = () => {
+        if (elements.configSection) {
+            elements.configSection.scrollIntoView({ behavior: 'smooth' });
+        }
+    };
+
+    if (elements.btnBackToConfigTop) {
+        elements.btnBackToConfigTop.addEventListener('click', scrollToConfig);
+    }
+
+    if (elements.btnBackToConfigBottom) {
+        elements.btnBackToConfigBottom.addEventListener('click', scrollToConfig);
+    }
 
     if (elements.btnRunSolver) elements.btnRunSolver.addEventListener('click', runSolver);
     if (elements.btnStopSolver) elements.btnStopSolver.addEventListener('click', () => stopSolver(false));
@@ -253,16 +290,53 @@ document.addEventListener('DOMContentLoaded', () => {
         if (el) el.addEventListener('change', () => {
             if (appState.stations.length > 0) {
                 calculateMetrics();
-                rebuildTable();
+                rebuildDataEntryTable();
+                rebuildResultTable();
                 updateChart();
             }
         });
     });
 
-    // Search input handler
-    if (elements.tableSearch) {
-        elements.tableSearch.addEventListener('input', () => {
-            rebuildTable();
+    // Search input handlers
+    if (elements.dataEntrySearch) {
+        elements.dataEntrySearch.addEventListener('input', () => {
+            rebuildDataEntryTable();
+        });
+    }
+    if (elements.resultSearch) {
+        elements.resultSearch.addEventListener('input', () => {
+            rebuildResultTable();
+        });
+    }
+
+    if (elements.graphSearch) {
+        elements.graphSearch.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const query = elements.graphSearch.value.trim();
+                if (!query) return;
+                
+                const chainageNum = parseUserChainage(query);
+                if (isNaN(chainageNum)) {
+                    showToast("Invalid chainage format", "error");
+                    return;
+                }
+                
+                if (appState.stations.length === 0) return;
+                
+                let closestIdx = 0;
+                let minDiff = Infinity;
+                appState.stations.forEach((st, idx) => {
+                    const diff = Math.abs(st.chainage - chainageNum);
+                    if (diff < minDiff) {
+                        minDiff = diff;
+                        closestIdx = idx;
+                    }
+                });
+                
+                appState.zoomCenter = closestIdx;
+                updateChart();
+                showToast(`Centered on Chainage: ${formatChainage(appState.stations[closestIdx].chainage)}`);
+            }
         });
     }
 
@@ -285,7 +359,7 @@ document.addEventListener('DOMContentLoaded', () => {
             appState.zoomCenter = Math.floor((N - 1) / 2);
             appState.yCenterOffset = 0;
             elements.zoomHorizontalSlider.value = 1;
-            elements.zoomVerticalLeftSlider.value = 10;
+            elements.zoomVerticalLeftSlider.value = 1;
             updateChart();
             showToast("View reset to default");
         });
@@ -378,7 +452,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 chainage: ch,
                 existingLevel: null,
                 proposedLevel: null,
-                locked: false
+                locked: false,
+                customMaxLift: null,
+                customMaxLower: null,
+                remark: ""
             });
             count++;
         }
@@ -392,14 +469,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         calculateMetrics();
-        rebuildTable();
+        rebuildDataEntryTable();
+        rebuildResultTable();
         updateChart();
         
         // Show sections
+        elements.dataEntrySection.classList.remove('hidden');
         elements.optimizerSection.classList.remove('hidden');
         elements.statsSection.classList.remove('hidden');
         elements.chartSection.classList.remove('hidden');
-        elements.dataSection.classList.remove('hidden');
+        elements.resultSection.classList.add('hidden');
         
         showToast(`Generated grid with ${count} stations.`);
     }
@@ -423,14 +502,17 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.limitV80.value = "40";
         elements.limitSD20.value = "2";
         elements.limitSD80.value = "20";
-        elements.tableSearch.value = "";
+        if(elements.dataEntrySearch) elements.dataEntrySearch.value = "";
+        if(elements.resultSearch) elements.resultSearch.value = "";
         
         elements.optimizerSection.classList.add('hidden');
         elements.statsSection.classList.add('hidden');
         elements.chartSection.classList.add('hidden');
-        elements.dataSection.classList.add('hidden');
+        elements.dataEntrySection.classList.add('hidden');
+        elements.resultSection.classList.add('hidden');
         
-        elements.levelsTableBody.innerHTML = "";
+        elements.dataEntryTableBody.innerHTML = "";
+        elements.resultTableBody.innerHTML = "";
         
         showToast("App reset successfully.");
     }
@@ -438,19 +520,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Excel Integration ---
 
     function downloadTemplate() {
-        const headers = ["Chainage", "Existing_Level", "Proposed_Level", "Locked"];
+        const headers = ["Chainage", "Existing_Level", "Proposed_Level", "Locked", "Max_Lift_Limit", "Max_Lower_Limit", "Remark"];
         const sampleData = [
-            { Chainage: "500.0000", Existing_Level: 100.250, Proposed_Level: "", Locked: "TRUE" },
-            { Chainage: "500.0010", Existing_Level: 100.280, Proposed_Level: "", Locked: "" },
-            { Chainage: "500.0020", Existing_Level: 100.310, Proposed_Level: "", Locked: "" },
-            { Chainage: "500.0030", Existing_Level: 100.350, Proposed_Level: "", Locked: "" },
-            { Chainage: "500.0040", Existing_Level: 100.380, Proposed_Level: "", Locked: "" },
-            { Chainage: "500.0050", Existing_Level: 100.400, Proposed_Level: "", Locked: "" },
-            { Chainage: "500.0060", Existing_Level: 100.420, Proposed_Level: "", Locked: "" },
-            { Chainage: "500.0070", Existing_Level: 100.450, Proposed_Level: "", Locked: "" },
-            { Chainage: "500.0080", Existing_Level: 100.480, Proposed_Level: "", Locked: "" },
-            { Chainage: "500.0090", Existing_Level: 100.510, Proposed_Level: "", Locked: "" },
-            { Chainage: "500.0100", Existing_Level: 100.530, Proposed_Level: "", Locked: "TRUE" }
+            { Chainage: "500.0000", Existing_Level: 100.250, Proposed_Level: "", Locked: "TRUE", Max_Lift_Limit: "", Max_Lower_Limit: "", Remark: "Bridge Start" },
+            { Chainage: "500.0010", Existing_Level: 100.280, Proposed_Level: "", Locked: "", Max_Lift_Limit: "", Max_Lower_Limit: "", Remark: "" },
+            { Chainage: "500.0020", Existing_Level: 100.310, Proposed_Level: "", Locked: "", Max_Lift_Limit: "", Max_Lower_Limit: "", Remark: "" },
+            { Chainage: "500.0030", Existing_Level: 100.350, Proposed_Level: "", Locked: "", Max_Lift_Limit: "", Max_Lower_Limit: "", Remark: "" },
+            { Chainage: "500.0040", Existing_Level: 100.380, Proposed_Level: "", Locked: "", Max_Lift_Limit: "", Max_Lower_Limit: "", Remark: "" },
+            { Chainage: "500.0050", Existing_Level: 100.400, Proposed_Level: "", Locked: "", Max_Lift_Limit: "", Max_Lower_Limit: "", Remark: "" },
+            { Chainage: "500.0060", Existing_Level: 100.420, Proposed_Level: "", Locked: "", Max_Lift_Limit: "", Max_Lower_Limit: "", Remark: "" },
+            { Chainage: "500.0070", Existing_Level: 100.450, Proposed_Level: "", Locked: "", Max_Lift_Limit: "", Max_Lower_Limit: "", Remark: "" },
+            { Chainage: "500.0080", Existing_Level: 100.480, Proposed_Level: "", Locked: "", Max_Lift_Limit: "", Max_Lower_Limit: "", Remark: "" },
+            { Chainage: "500.0090", Existing_Level: 100.510, Proposed_Level: "", Locked: "", Max_Lift_Limit: "", Max_Lower_Limit: "", Remark: "" },
+            { Chainage: "500.0100", Existing_Level: 100.530, Proposed_Level: "", Locked: "TRUE", Max_Lift_Limit: "", Max_Lower_Limit: "", Remark: "Bridge End" }
         ];
         
         const ws = XLSX.utils.json_to_sheet(sampleData, { header: headers });
@@ -468,7 +550,8 @@ document.addEventListener('DOMContentLoaded', () => {
             [""],
             ["2. INSTRUCTIONS"],
             ["   - Keep the stations at regular 10m intervals (or whichever interval is specified in the app)."],
-            ["   - Ensure endpoints (first and last stations) are locked to maintain smooth transition to the existing track."]
+            ["   - Ensure endpoints (first and last stations) are locked to maintain smooth transition to the existing track."],
+            ["   - You can enter station-specific lift limits in Max_Lift_Limit and Max_Lower_Limit columns (leave blank for global limits)."]
         ];
         const wsManual = XLSX.utils.aoa_to_sheet(manualAoA);
         wsManual['!cols'] = [{ wch: 100 }];
@@ -507,6 +590,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const existKey = keys.find(k => k.toLowerCase().replace(/_/g, ' ').includes('exist') || k.toLowerCase().includes('level') || k.toLowerCase().includes('elevation'));
         const propKey = keys.find(k => k.toLowerCase().replace(/_/g, ' ').includes('proposed') || k.toLowerCase().includes('design') || k.toLowerCase().includes('prop'));
         const lockKey = keys.find(k => k.toLowerCase().includes('lock'));
+        const maxLiftKey = keys.find(k => k.toLowerCase().replace(/_/g, ' ').includes('max lift') || k.toLowerCase().includes('max_lift'));
+        const maxLowerKey = keys.find(k => k.toLowerCase().replace(/_/g, ' ').includes('max lower') || k.toLowerCase().includes('max_lower'));
+        const remarkKey = keys.find(k => k.toLowerCase().includes('remark'));
         
         if (!chainageKey) {
             alert("Could not identify the Chainage column. Please check your Excel headers.");
@@ -546,12 +632,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
             
+            let customMaxLiftVal = maxLiftKey ? parseFloat(row[maxLiftKey]) : NaN;
+            if (isNaN(customMaxLiftVal)) customMaxLiftVal = null;
+            
+            let customMaxLowerVal = maxLowerKey ? parseFloat(row[maxLowerKey]) : NaN;
+            if (isNaN(customMaxLowerVal)) customMaxLowerVal = null;
+            
+            let remarkVal = remarkKey ? (row[remarkKey] || "") : "";
+            
             appState.stations.push({
                 id: 'st_' + Math.random().toString(36).substr(2, 9),
                 chainage: ch,
                 existingLevel: existVal,
                 proposedLevel: propVal,
-                locked: locked
+                locked: locked,
+                customMaxLift: customMaxLiftVal,
+                customMaxLower: customMaxLowerVal,
+                remark: remarkVal.toString()
             });
         });
         
@@ -582,14 +679,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (elements.zoomHorizontalSlider) elements.zoomHorizontalSlider.value = "1";
 
         calculateMetrics();
-        rebuildTable();
+        rebuildDataEntryTable();
+        rebuildResultTable();
         updateChart();
         showToast("Import successful! Data loaded.");
         
         elements.optimizerSection.classList.remove('hidden');
         elements.statsSection.classList.remove('hidden');
         elements.chartSection.classList.remove('hidden');
-        elements.dataSection.classList.remove('hidden');
+        elements.dataEntrySection.classList.remove('hidden');
+        elements.resultSection.classList.add('hidden');
     }
 
     // --- Metrics Calculations ---
@@ -603,12 +702,26 @@ document.addEventListener('DOMContentLoaded', () => {
         const limitSD20 = parseFloat(elements.limitSD20.value) || 2;
         const limitSD80 = parseFloat(elements.limitSD80.value) || 20;
         
+        const globalMaxLift = parseFloat(elements.maxLift.value) || 50;
+        const globalMaxLower = parseFloat(elements.maxLower.value) || 0;
+        
         appState.stations.forEach(st => {
             st.liftLower = (st.proposedLevel !== null && st.existingLevel !== null) ? (st.proposedLevel - st.existingLevel) * 1000 : 0; // in mm
+            
+            const localMaxLift = st.customMaxLift !== null && st.customMaxLift !== undefined ? st.customMaxLift : globalMaxLift;
+            const localMaxLower = st.customMaxLower !== null && st.customMaxLower !== undefined ? st.customMaxLower : globalMaxLower;
+            
+            st.liftViolated = st.liftLower > localMaxLift + 0.001; // epsilon to handle float inaccuracies
+            st.lowerViolated = st.liftLower < -localMaxLower - 0.001;
+            
             st.v20 = null;
             st.v80 = null;
             st.sd20 = null;
             st.sd80 = null;
+            st.existV20 = null;
+            st.existV80 = null;
+            st.existSd20 = null;
+            st.existSd80 = null;
             st.v20Violated = false;
             st.v80Violated = false;
             st.sd20Violated = false;
@@ -628,6 +741,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         appState.stations[i].v20Violated = true;
                     }
                 }
+                if (appState.stations[i].existingLevel !== null && appState.stations[i - k20].existingLevel !== null && appState.stations[i + k20].existingLevel !== null) {
+                    appState.stations[i].existV20 = (appState.stations[i].existingLevel - 0.5 * (appState.stations[i - k20].existingLevel + appState.stations[i + k20].existingLevel)) * 1000;
+                }
             }
             if (i >= k80 && i < N - k80) {
                 if (appState.stations[i].proposedLevel !== null && appState.stations[i - k80].proposedLevel !== null && appState.stations[i + k80].proposedLevel !== null) {
@@ -635,6 +751,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (Math.abs(appState.stations[i].v80) > limitV80) {
                         appState.stations[i].v80Violated = true;
                     }
+                }
+                if (appState.stations[i].existingLevel !== null && appState.stations[i - k80].existingLevel !== null && appState.stations[i + k80].existingLevel !== null) {
+                    appState.stations[i].existV80 = (appState.stations[i].existingLevel - 0.5 * (appState.stations[i - k80].existingLevel + appState.stations[i + k80].existingLevel)) * 1000;
                 }
             }
         }
@@ -645,6 +764,8 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const blockSD20 = [];
         const blockSD80 = [];
+        const blockExistSD20 = [];
+        const blockExistSD80 = [];
         
         for (let j = 0; j < blocksCount; j++) {
             const startIdx = j;
@@ -652,11 +773,12 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // SD 20
             const v20Vals = [];
+            const existV20Vals = [];
             for (let idx = startIdx; idx <= endIdx; idx++) {
-                if (appState.stations[idx].v20 !== null) {
-                    v20Vals.push(appState.stations[idx].v20);
-                }
+                if (appState.stations[idx].v20 !== null) v20Vals.push(appState.stations[idx].v20);
+                if (appState.stations[idx].existV20 !== null) existV20Vals.push(appState.stations[idx].existV20);
             }
+            
             let sd20 = 0, mean20 = 0, var20 = 0;
             if (v20Vals.length > 1) {
                 mean20 = v20Vals.reduce((sum, v) => sum + v, 0) / v20Vals.length;
@@ -665,13 +787,22 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             blockSD20.push({ sd: sd20, mean: mean20, variance: var20, startIdx, endIdx, count: v20Vals.length });
             
+            let existSd20 = 0, existMean20 = 0, existVar20 = 0;
+            if (existV20Vals.length > 1) {
+                existMean20 = existV20Vals.reduce((sum, v) => sum + v, 0) / existV20Vals.length;
+                existVar20 = existV20Vals.reduce((sum, v) => sum + Math.pow(v - existMean20, 2), 0) / existV20Vals.length;
+                existSd20 = Math.sqrt(existVar20);
+            }
+            blockExistSD20.push({ sd: existSd20, mean: existMean20, variance: existVar20, startIdx, endIdx, count: existV20Vals.length });
+            
             // SD 80
             const v80Vals = [];
+            const existV80Vals = [];
             for (let idx = startIdx; idx <= endIdx; idx++) {
-                if (appState.stations[idx].v80 !== null) {
-                    v80Vals.push(appState.stations[idx].v80);
-                }
+                if (appState.stations[idx].v80 !== null) v80Vals.push(appState.stations[idx].v80);
+                if (appState.stations[idx].existV80 !== null) existV80Vals.push(appState.stations[idx].existV80);
             }
+            
             let sd80 = 0, mean80 = 0, var80 = 0;
             if (v80Vals.length > 1) {
                 mean80 = v80Vals.reduce((sum, v) => sum + v, 0) / v80Vals.length;
@@ -679,27 +810,47 @@ document.addEventListener('DOMContentLoaded', () => {
                 sd80 = Math.sqrt(var80);
             }
             blockSD80.push({ sd: sd80, mean: mean80, variance: var80, startIdx, endIdx, count: v80Vals.length });
+            
+            let existSd80 = 0, existMean80 = 0, existVar80 = 0;
+            if (existV80Vals.length > 1) {
+                existMean80 = existV80Vals.reduce((sum, v) => sum + v, 0) / existV80Vals.length;
+                existVar80 = existV80Vals.reduce((sum, v) => sum + Math.pow(v - existMean80, 2), 0) / existV80Vals.length;
+                existSd80 = Math.sqrt(existVar80);
+            }
+            blockExistSD80.push({ sd: existSd80, mean: existMean80, variance: existVar80, startIdx, endIdx, count: existV80Vals.length });
         }
         
         if (blocksCount <= 0) {
             // Entire dataset standard deviation
             const v20Vals = appState.stations.filter(st => st.v20 !== null).map(st => st.v20);
+            const existV20Vals = appState.stations.filter(st => st.existV20 !== null).map(st => st.existV20);
             const mean20 = v20Vals.length > 1 ? v20Vals.reduce((a,b)=>a+b,0)/v20Vals.length : 0;
+            const existMean20 = existV20Vals.length > 1 ? existV20Vals.reduce((a,b)=>a+b,0)/existV20Vals.length : 0;
             const var20 = v20Vals.length > 1 ? v20Vals.reduce((sum, v) => sum + Math.pow(v - mean20, 2), 0) / v20Vals.length : 0;
+            const existVar20 = existV20Vals.length > 1 ? existV20Vals.reduce((sum, v) => sum + Math.pow(v - existMean20, 2), 0) / existV20Vals.length : 0;
             const sd20 = v20Vals.length > 1 ? Math.sqrt(var20) : 0;
+            const existSd20 = existV20Vals.length > 1 ? Math.sqrt(existVar20) : 0;
             
             const v80Vals = appState.stations.filter(st => st.v80 !== null).map(st => st.v80);
+            const existV80Vals = appState.stations.filter(st => st.existV80 !== null).map(st => st.existV80);
             const mean80 = v80Vals.length > 1 ? v80Vals.reduce((a,b)=>a+b,0)/v80Vals.length : 0;
+            const existMean80 = existV80Vals.length > 1 ? existV80Vals.reduce((a,b)=>a+b,0)/existV80Vals.length : 0;
             const var80 = v80Vals.length > 1 ? v80Vals.reduce((sum, v) => sum + Math.pow(v - mean80, 2), 0) / v80Vals.length : 0;
+            const existVar80 = existV80Vals.length > 1 ? existV80Vals.reduce((sum, v) => sum + Math.pow(v - existMean80, 2), 0) / existV80Vals.length : 0;
             const sd80 = v80Vals.length > 1 ? Math.sqrt(var80) : 0;
+            const existSd80 = existV80Vals.length > 1 ? Math.sqrt(existVar80) : 0;
             
             appState.stations.forEach(st => {
                 st.sd20 = sd20;
                 st.sd80 = sd80;
+                st.existSd20 = existSd20;
+                st.existSd80 = existSd80;
                 st.sd20Violated = sd20 > limitSD20;
                 st.sd80Violated = sd80 > limitSD80;
                 st.sd20Details = { mean: mean20, variance: var20, count: v20Vals.length, startIdx: 0, endIdx: N-1 };
                 st.sd80Details = { mean: mean80, variance: var80, count: v80Vals.length, startIdx: 0, endIdx: N-1 };
+                st.existSd20Details = { mean: existMean20, variance: existVar20, count: existV20Vals.length, startIdx: 0, endIdx: N-1 };
+                st.existSd80Details = { mean: existMean80, variance: existVar80, count: existV80Vals.length, startIdx: 0, endIdx: N-1 };
             });
         } else {
             const offset = Math.floor(windowSize / 2);
@@ -713,13 +864,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 const bestBlock20 = blockSD20[j_center];
                 const bestBlock80 = blockSD80[j_center];
+                const bestExistBlock20 = blockExistSD20[j_center];
+                const bestExistBlock80 = blockExistSD80[j_center];
                 
                 appState.stations[i].sd20 = bestBlock20.sd;
                 appState.stations[i].sd80 = bestBlock80.sd;
+                appState.stations[i].existSd20 = bestExistBlock20.sd;
+                appState.stations[i].existSd80 = bestExistBlock80.sd;
+                
                 appState.stations[i].sd20Violated = bestBlock20.sd > limitSD20;
                 appState.stations[i].sd80Violated = bestBlock80.sd > limitSD80;
+                
                 appState.stations[i].sd20Details = bestBlock20;
                 appState.stations[i].sd80Details = bestBlock80;
+                appState.stations[i].existSd20Details = bestExistBlock20;
+                appState.stations[i].existSd80Details = bestExistBlock80;
             }
         }
         
@@ -750,7 +909,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (st.sd20 !== null && st.sd20 > maxSD20) maxSD20 = st.sd20;
             if (st.sd80 !== null && st.sd80 > maxSD80) maxSD80 = st.sd80;
             
-            if (st.v20Violated || st.v80Violated || st.sd20Violated || st.sd80Violated) {
+            if (st.v20Violated || st.v80Violated || st.sd20Violated || st.sd80Violated || st.liftViolated || st.lowerViolated) {
                 anyViolations = true;
             }
         });
@@ -832,6 +991,8 @@ document.addEventListener('DOMContentLoaded', () => {
             P: appState.stations.map(st => st.proposedLevel),
             E: appState.stations.map(st => st.existingLevel),
             locked: appState.stations.map(st => st.locked),
+            customMaxLift: appState.stations.map(st => st.customMaxLift),
+            customMaxLower: appState.stations.map(st => st.customMaxLower),
             m: new Array(N).fill(0),
             v: new Array(N).fill(0),
             t: 0,
@@ -1063,8 +1224,11 @@ document.addEventListener('DOMContentLoaded', () => {
             P[i] -= (alpha / (Math.sqrt(v_hat) + epsilon)) * m_hat;
             
             // Box clamp
-            const minL = E[i] - maxLower;
-            const maxL = E[i] + maxLift;
+            const localMaxLift = solverState.customMaxLift[i] !== null && solverState.customMaxLift[i] !== undefined ? solverState.customMaxLift[i] / 1000.0 : maxLift;
+            const localMaxLower = solverState.customMaxLower[i] !== null && solverState.customMaxLower[i] !== undefined ? solverState.customMaxLower[i] / 1000.0 : maxLower;
+            
+            const minL = E[i] - localMaxLower;
+            const maxL = E[i] + localMaxLift;
             P[i] = Math.max(minL, Math.min(maxL, P[i]));
         }
         
@@ -1088,12 +1252,15 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.solverProgressCard.classList.add('hidden');
         
         calculateMetrics();
-        rebuildTable();
+        rebuildDataEntryTable();
+        rebuildResultTable();
         updateChart();
         
         if (completed) {
+            elements.resultSection.classList.remove('hidden');
             showToast("Optimization finished successfully!");
         } else {
+            elements.resultSection.classList.remove('hidden'); // Also show if stopped early
             showToast("Optimization stopped by user.", "warning");
         }
     }
@@ -1127,17 +1294,15 @@ document.addEventListener('DOMContentLoaded', () => {
         let startIdx = Math.round(appState.zoomCenter - visibleCount / 2);
         let endIdx = startIdx + visibleCount - 1;
         
+        // Prevent bounds from exceeding array size for rendering
         if (startIdx < 0) {
             startIdx = 0;
-            endIdx = startIdx + visibleCount - 1;
+            endIdx = Math.min(N - 1, startIdx + visibleCount - 1);
         }
         if (endIdx >= N) {
             endIdx = N - 1;
             startIdx = Math.max(0, endIdx - visibleCount + 1);
         }
-        
-        // Update zoom center back to the real center of current window
-        appState.zoomCenter = (startIdx + endIdx) / 2;
         
         // Find visible range levels bounds
         let visMin = Infinity;
@@ -1503,27 +1668,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Table Builder ---
 
-    function rebuildTable() {
-        const tbody = elements.levelsTableBody;
+    function rebuildDataEntryTable() {
+        const tbody = elements.dataEntryTableBody;
         if (!tbody) return;
         
         tbody.innerHTML = '';
         
-        const limitV20 = parseFloat(elements.limitV20.value) || 5;
-        const limitV80 = parseFloat(elements.limitV80.value) || 40;
-        const limitSD20 = parseFloat(elements.limitSD20.value) || 2;
-        const limitSD80 = parseFloat(elements.limitSD80.value) || 20;
-        
-        const query = elements.tableSearch.value.toLowerCase().trim();
+        const query = elements.dataEntrySearch ? elements.dataEntrySearch.value.toLowerCase().trim() : "";
         
         appState.stations.forEach((st, idx) => {
             const chDisplay = formatChainage(st.chainage);
             if (query && !chDisplay.toLowerCase().includes(query)) return;
             
             const tr = document.createElement('tr');
-            if (st.v20Violated || st.v80Violated || st.sd20Violated || st.sd80Violated) {
-                tr.className = "row-violated";
-            }
             
             // 1. Lock
             const tdLock = document.createElement('td');
@@ -1538,6 +1695,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 st.locked = e.target.checked;
                 calculateMetrics();
                 updateChart();
+                rebuildResultTable();
             };
             tdLock.appendChild(chkLock);
             tr.appendChild(tdLock);
@@ -1569,9 +1727,139 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 calculateMetrics();
                 updateChart();
-                rebuildTable();
+                rebuildDataEntryTable();
+                rebuildResultTable();
             };
             tdExist.appendChild(inputExist);
+            tr.appendChild(tdExist);
+            
+            // 5. Proposed Level (Input)
+            const tdProp = document.createElement('td');
+            const inputProp = document.createElement('input');
+            inputProp.type = "number";
+            inputProp.step = "0.001";
+            inputProp.className = "table-input";
+            inputProp.value = st.proposedLevel !== null ? st.proposedLevel.toFixed(3) : "";
+            inputProp.onchange = (e) => {
+                let val = parseFloat(e.target.value);
+                st.proposedLevel = isNaN(val) ? null : val;
+                calculateMetrics();
+                updateChart();
+                rebuildDataEntryTable();
+                rebuildResultTable();
+            };
+            tdProp.appendChild(inputProp);
+            tr.appendChild(tdProp);
+            
+            // 6. Custom Max Lift
+            const tdMaxLift = document.createElement('td');
+            const inputMaxLift = document.createElement('input');
+            inputMaxLift.type = "number";
+            inputMaxLift.className = "table-input";
+            inputMaxLift.style.width = "60px";
+            inputMaxLift.placeholder = "Global";
+            inputMaxLift.value = st.customMaxLift !== null ? st.customMaxLift : "";
+            inputMaxLift.onchange = (e) => {
+                let val = parseFloat(e.target.value);
+                st.customMaxLift = isNaN(val) ? null : val;
+                calculateMetrics();
+                updateChart();
+                rebuildDataEntryTable();
+                rebuildResultTable();
+            };
+            tdMaxLift.appendChild(inputMaxLift);
+            tr.appendChild(tdMaxLift);
+
+            // 7. Custom Max Lower
+            const tdMaxLower = document.createElement('td');
+            const inputMaxLower = document.createElement('input');
+            inputMaxLower.type = "number";
+            inputMaxLower.className = "table-input";
+            inputMaxLower.style.width = "60px";
+            inputMaxLower.placeholder = "Global";
+            inputMaxLower.value = st.customMaxLower !== null ? st.customMaxLower : "";
+            inputMaxLower.onchange = (e) => {
+                let val = parseFloat(e.target.value);
+                st.customMaxLower = isNaN(val) ? null : val;
+                calculateMetrics();
+                updateChart();
+                rebuildDataEntryTable();
+                rebuildResultTable();
+            };
+            tdMaxLower.appendChild(inputMaxLower);
+            tr.appendChild(tdMaxLower);
+            
+            // 8. Remark
+            const tdRemark = document.createElement('td');
+            const inputRemark = document.createElement('input');
+            inputRemark.type = "text";
+            inputRemark.className = "table-input";
+            inputRemark.value = st.remark || "";
+            inputRemark.onchange = (e) => {
+                st.remark = e.target.value;
+            };
+            tdRemark.appendChild(inputRemark);
+            tr.appendChild(tdRemark);
+
+            tbody.appendChild(tr);
+        });
+    }
+
+    function rebuildResultTable() {
+        const tbody = elements.resultTableBody;
+        if (!tbody) return;
+        
+        tbody.innerHTML = '';
+        
+        const limitV20 = parseFloat(elements.limitV20.value) || 5;
+        const limitV80 = parseFloat(elements.limitV80.value) || 40;
+        const limitSD20 = parseFloat(elements.limitSD20.value) || 2;
+        const limitSD80 = parseFloat(elements.limitSD80.value) || 20;
+        
+        const query = elements.resultSearch ? elements.resultSearch.value.toLowerCase().trim() : "";
+        
+        appState.stations.forEach((st, idx) => {
+            const chDisplay = formatChainage(st.chainage);
+            if (query && !chDisplay.toLowerCase().includes(query)) return;
+            
+            const tr = document.createElement('tr');
+            if (st.v20Violated || st.v80Violated || st.sd20Violated || st.sd80Violated || st.liftViolated || st.lowerViolated) {
+                tr.className = "row-violated";
+            }
+            
+            // 1. Lock
+            const tdLock = document.createElement('td');
+            tdLock.style.textAlign = "center";
+            const chkLock = document.createElement('input');
+            chkLock.type = "checkbox";
+            chkLock.checked = st.locked;
+            if (idx === 0 || idx === appState.stations.length - 1) {
+                chkLock.disabled = true;
+            }
+            chkLock.onchange = (e) => {
+                st.locked = e.target.checked;
+                calculateMetrics();
+                updateChart();
+                rebuildDataEntryTable();
+            };
+            tdLock.appendChild(chkLock);
+            tr.appendChild(tdLock);
+            
+            // 2. Station No
+            const tdNo = document.createElement('td');
+            tdNo.style.textAlign = "center";
+            tdNo.textContent = idx + 1;
+            tr.appendChild(tdNo);
+            
+            // 3. Chainage
+            const tdCh = document.createElement('td');
+            tdCh.style.fontWeight = "bold";
+            tdCh.textContent = chDisplay;
+            tr.appendChild(tdCh);
+            
+            // 4. Existing Level
+            const tdExist = document.createElement('td');
+            tdExist.textContent = st.existingLevel !== null ? st.existingLevel.toFixed(3) : "";
             tr.appendChild(tdExist);
             
             // 5. Proposed Level (Input)
@@ -1587,7 +1875,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 calculateMetrics();
                 updateChart();
-                rebuildTable();
+                rebuildResultTable();
+                rebuildDataEntryTable();
             };
             tdProp.appendChild(inputProp);
             tr.appendChild(tdProp);
@@ -1627,13 +1916,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     let left = e.clientX + 15;
                     let top = e.clientY + 15;
                     
-                    // Adjust if going off screen
-                    if (left + 350 > vw) {
-                        left = e.clientX - 365;
-                    }
-                    if (top + 200 > vh) {
-                        top = e.clientY - 215;
-                    }
+                    if (left + 350 > vw) left = e.clientX - 365;
+                    if (top + 200 > vh) top = e.clientY - 215;
                     
                     t.style.left = left + 'px';
                     t.style.top = top + 'px';
@@ -1644,7 +1928,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
 
-            // 7. V20
+            // 7. Exist V20
+            const tdExistV20 = document.createElement('td');
+            if (st.existV20 !== null) {
+                tdExistV20.textContent = st.existV20.toFixed(1);
+                const isViolated = Math.abs(st.existV20) > limitV20;
+                tdExistV20.className = isViolated ? "cell-violated" : "cell-success";
+                const pMid = st.existingLevel.toFixed(3);
+                const pLeft = appState.stations[idx - k20].existingLevel.toFixed(3);
+                const pRight = appState.stations[idx + k20].existingLevel.toFixed(3);
+                const chordAvg = ((parseFloat(pLeft) + parseFloat(pRight)) / 2).toFixed(3);
+                
+                const calcHtml = `
+                    <h4>Existing 20m Versine</h4>
+                    <div class="calc-step">Formula: E_mid - (E_left + E_right) / 2</div>
+                    <div class="calc-step">= ${pMid} - (${pLeft} + ${pRight}) / 2</div>
+                    <div class="calc-step">= ${pMid} - ${chordAvg}</div>
+                    <div class="calc-result ${isViolated ? 'calc-fail' : ''}">= ${st.existV20.toFixed(3)} mm</div>
+                `;
+                attachTooltip(tdExistV20, calcHtml);
+            } else {
+                tdExistV20.textContent = "-";
+            }
+            tr.appendChild(tdExistV20);
+
+            // 8. Prop V20
             const tdV20 = document.createElement('td');
             if (st.v20 !== null) {
                 tdV20.textContent = st.v20.toFixed(1);
@@ -1667,7 +1975,71 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             tr.appendChild(tdV20);
             
-            // 8. V80
+            // 9. Exist SD20
+            const tdExistSD20 = document.createElement('td');
+            if (st.existSd20 !== null) {
+                tdExistSD20.textContent = st.existSd20.toFixed(1);
+                const isViolated = st.existSd20 > limitSD20;
+                tdExistSD20.className = isViolated ? "cell-violated" : "cell-success";
+                attachTooltip(tdExistSD20, buildSdHtml("Existing 20m Standard Deviation", st.existSd20, isViolated, st.existSd20Details, intervalMeters));
+            } else {
+                tdExistSD20.textContent = "-";
+            }
+            tr.appendChild(tdExistSD20);
+
+            // 10. Prop SD20
+            // Helper for SD
+            function buildSdHtml(label, stVal, violated, details, interval) {
+                if (!details) return `<h4>${label}</h4><div class="calc-step">Not enough data to calculate SD block details.</div>`;
+                const startCh = formatChainage(appState.stations[details.startIdx].chainage);
+                const endCh = formatChainage(appState.stations[details.endIdx].chainage);
+                
+                return `
+                    <h4>${label}</h4>
+                    <div class="calc-step">Centered Block: ${startCh} to ${endCh}</div>
+                    <div class="calc-step">Items in Block (N): ${details.count}</div>
+                    <div class="calc-step">Mean (μ): ${details.mean.toFixed(3)} mm</div>
+                    <div class="calc-step">Variance (σ²): ${details.variance.toFixed(3)}</div>
+                    <div class="calc-step">Equation: &radic;[ &Sigma;(x - μ)&sup2; / N ]</div>
+                    <div class="calc-result ${violated ? 'calc-fail' : ''}">SD: ${stVal.toFixed(3)} mm</div>
+                `;
+            }
+
+            const tdSD20 = document.createElement('td');
+            if (st.sd20 !== null) {
+                tdSD20.textContent = st.sd20.toFixed(1);
+                tdSD20.className = st.sd20Violated ? "cell-violated" : "cell-success";
+                attachTooltip(tdSD20, buildSdHtml("20m Standard Deviation", st.sd20, st.sd20Violated, st.sd20Details, intervalMeters));
+            } else {
+                tdSD20.textContent = "-";
+            }
+            tr.appendChild(tdSD20);
+            
+            // 11. Exist V80
+            const tdExistV80 = document.createElement('td');
+            if (st.existV80 !== null) {
+                tdExistV80.textContent = st.existV80.toFixed(1);
+                const isViolated = Math.abs(st.existV80) > limitV80;
+                tdExistV80.className = isViolated ? "cell-violated" : "cell-success";
+                const pMid = st.existingLevel.toFixed(3);
+                const pLeft = appState.stations[idx - k80].existingLevel.toFixed(3);
+                const pRight = appState.stations[idx + k80].existingLevel.toFixed(3);
+                const chordAvg = ((parseFloat(pLeft) + parseFloat(pRight)) / 2).toFixed(3);
+                
+                const calcHtml = `
+                    <h4>Existing 80m Versine</h4>
+                    <div class="calc-step">Formula: E_mid - (E_left + E_right) / 2</div>
+                    <div class="calc-step">= ${pMid} - (${pLeft} + ${pRight}) / 2</div>
+                    <div class="calc-step">= ${pMid} - ${chordAvg}</div>
+                    <div class="calc-result ${isViolated ? 'calc-fail' : ''}">= ${st.existV80.toFixed(3)} mm</div>
+                `;
+                attachTooltip(tdExistV80, calcHtml);
+            } else {
+                tdExistV80.textContent = "-";
+            }
+            tr.appendChild(tdExistV80);
+
+            // 12. Prop V80
             const tdV80 = document.createElement('td');
             if (st.v80 !== null) {
                 tdV80.textContent = st.v80.toFixed(1);
@@ -1690,35 +2062,19 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             tr.appendChild(tdV80);
             
-            // Helper for SD
-            function buildSdHtml(label, stVal, violated, details, interval) {
-                if (!details) return `<h4>${label}</h4><div class="calc-step">Not enough data to calculate SD block details.</div>`;
-                const startCh = formatChainage(appState.stations[details.startIdx].chainage);
-                const endCh = formatChainage(appState.stations[details.endIdx].chainage);
-                
-                return `
-                    <h4>${label}</h4>
-                    <div class="calc-step">Centered Block: ${startCh} to ${endCh}</div>
-                    <div class="calc-step">Items in Block (N): ${details.count}</div>
-                    <div class="calc-step">Mean (μ): ${details.mean.toFixed(3)} mm</div>
-                    <div class="calc-step">Variance (σ²): ${details.variance.toFixed(3)}</div>
-                    <div class="calc-step">Equation: &radic;[ &Sigma;(x - μ)&sup2; / N ]</div>
-                    <div class="calc-result ${violated ? 'calc-fail' : ''}">SD: ${stVal.toFixed(3)} mm</div>
-                `;
-            }
-            
-            // 9. SD20
-            const tdSD20 = document.createElement('td');
-            if (st.sd20 !== null) {
-                tdSD20.textContent = st.sd20.toFixed(1);
-                tdSD20.className = st.sd20Violated ? "cell-violated" : "cell-success";
-                attachTooltip(tdSD20, buildSdHtml("20m Standard Deviation", st.sd20, st.sd20Violated, st.sd20Details, intervalMeters));
+            // 13. Exist SD80
+            const tdExistSD80 = document.createElement('td');
+            if (st.existSd80 !== null) {
+                tdExistSD80.textContent = st.existSd80.toFixed(1);
+                const isViolated = st.existSd80 > limitSD80;
+                tdExistSD80.className = isViolated ? "cell-violated" : "cell-success";
+                attachTooltip(tdExistSD80, buildSdHtml("Existing 80m Standard Deviation", st.existSd80, isViolated, st.existSd80Details, intervalMeters));
             } else {
-                tdSD20.textContent = "-";
+                tdExistSD80.textContent = "-";
             }
-            tr.appendChild(tdSD20);
-            
-            // 10. SD80
+            tr.appendChild(tdExistSD80);
+
+            // 14. Prop SD80
             const tdSD80 = document.createElement('td');
             if (st.sd80 !== null) {
                 tdSD80.textContent = st.sd80.toFixed(1);
@@ -1757,23 +2113,34 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Sheet 2: Station Level Book
         const tableHeaders = [
-            "Station No", "Chainage", "Existing Level (m)", "Proposed Level (m)",
-            "Lift(+)/Lower(-) (mm)", "20m Versine (mm)", "80m Versine (mm)",
-            "20m Block SD (mm)", "80m Block SD (mm)", "Compliance Status"
+            "Station No", "Chainage", "Existing Level (m)", "Proposed Level (m)", "Locked",
+            "Custom Max Lift (mm)", "Custom Max Lower (mm)", "Remark",
+            "Lift(+)/Lower(-) (mm)", "Exist 20m Versine (mm)", "Prop 20m Versine (mm)", 
+            "Exist 20m Block SD (mm)", "Prop 20m Block SD (mm)", "Exist 80m Versine (mm)", 
+            "Prop 80m Versine (mm)", "Exist 80m Block SD (mm)", "Prop 80m Block SD (mm)", 
+            "Compliance Status"
         ];
         
         const tableData = appState.stations.map((st, idx) => {
-            const violated = st.v20Violated || st.v80Violated || st.sd20Violated || st.sd80Violated;
+            const violated = st.v20Violated || st.v80Violated || st.sd20Violated || st.sd80Violated || st.liftViolated || st.lowerViolated;
             const liftText = st.liftLower >= 0 ? `+${st.liftLower.toFixed(1)}` : st.liftLower.toFixed(1);
             return [
                 idx + 1,
                 formatChainage(st.chainage),
                 st.existingLevel,
                 st.proposedLevel,
+                st.locked ? "TRUE" : "FALSE",
+                st.customMaxLift !== null ? st.customMaxLift : "",
+                st.customMaxLower !== null ? st.customMaxLower : "",
+                st.remark || "",
                 liftText,
+                st.existV20 !== null ? st.existV20.toFixed(1) : "-",
                 st.v20 !== null ? st.v20.toFixed(1) : "-",
-                st.v80 !== null ? st.v80.toFixed(1) : "-",
+                st.existSd20 !== null ? st.existSd20.toFixed(1) : "-",
                 st.sd20 !== null ? st.sd20.toFixed(1) : "-",
+                st.existV80 !== null ? st.existV80.toFixed(1) : "-",
+                st.v80 !== null ? st.v80.toFixed(1) : "-",
+                st.existSd80 !== null ? st.existSd80.toFixed(1) : "-",
                 st.sd80 !== null ? st.sd80.toFixed(1) : "-",
                 violated ? "FAIL" : "PASS"
             ];
@@ -1781,9 +2148,12 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const wsTable = XLSX.utils.aoa_to_sheet([tableHeaders, ...tableData]);
         wsTable['!cols'] = [
-            { wch: 12 }, { wch: 15 }, { wch: 20 }, { wch: 20 },
-            { wch: 22 }, { wch: 18 }, { wch: 18 },
-            { wch: 18 }, { wch: 18 }, { wch: 18 }
+            { wch: 12 }, { wch: 15 }, { wch: 20 }, { wch: 20 }, { wch: 10 },
+            { wch: 20 }, { wch: 20 }, { wch: 25 },
+            { wch: 22 }, { wch: 22 }, { wch: 22 },
+            { wch: 22 }, { wch: 22 }, { wch: 22 },
+            { wch: 22 }, { wch: 22 }, { wch: 22 },
+            { wch: 18 }
         ];
         
         const wb = XLSX.utils.book_new();
@@ -1894,7 +2264,7 @@ document.addEventListener('DOMContentLoaded', () => {
             doc.text("Station-Wise Detailed Level Book", 14, 18);
             
             const headers = [
-                ["No.", "Chainage", "Exist. (m)", "Proposed (m)", "Lift/Lower (mm)", "V20 (mm)", "V80 (mm)", "SD20 (mm)", "SD80 (mm)", "Status"]
+                ["No.", "Chainage", "Exist. (m)", "Proposed (m)", "Remark", "Lift/Lower (mm)", "Ex.V20", "Pr.V20", "Ex.SD20", "Pr.SD20", "Ex.V80", "Pr.V80", "Ex.SD80", "Pr.SD80", "Status"]
             ];
             
             const bodyData = appState.stations.map((st, idx) => {
@@ -1905,15 +2275,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     formatChainage(st.chainage),
                     st.existingLevel.toFixed(3),
                     st.proposedLevel.toFixed(3),
+                    st.remark || "",
                     liftText,
+                    st.existV20 !== null ? st.existV20.toFixed(1) : "-",
                     st.v20 !== null ? st.v20.toFixed(1) : "-",
-                    st.v80 !== null ? st.v80.toFixed(1) : "-",
+                    st.existSd20 !== null ? st.existSd20.toFixed(1) : "-",
                     st.sd20 !== null ? st.sd20.toFixed(1) : "-",
+                    st.existV80 !== null ? st.existV80.toFixed(1) : "-",
+                    st.v80 !== null ? st.v80.toFixed(1) : "-",
+                    st.existSd80 !== null ? st.existSd80.toFixed(1) : "-",
                     st.sd80 !== null ? st.sd80.toFixed(1) : "-",
                     violated ? "FAIL" : "PASS"
                 ];
             });
             
+            const limitV20 = parseFloat(elements.limitV20.value) || 5;
+            const limitV80 = parseFloat(elements.limitV80.value) || 40;
+            const limitSD20 = parseFloat(elements.limitSD20.value) || 2;
+            const limitSD80 = parseFloat(elements.limitSD80.value) || 20;
+
             doc.autoTable({
                 startY: 23,
                 head: headers,
@@ -1921,11 +2301,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 theme: 'grid',
                 headStyles: { fillColor: [40, 50, 60], fontSize: 8, textColor: 255 },
                 styles: { fontSize: 8, cellPadding: 2 },
-                didDrawCell: function (data) {
-                    // Highlight failing cells
-                    if (data.column.index === 9 && data.cell.text[0] === 'FAIL') {
-                        doc.setTextColor(220, 38, 38);
-                        doc.setFont(undefined, 'bold');
+                didParseCell: function (data) {
+                    if (data.section === 'body') {
+                        const colIdx = data.column.index;
+                        const cellText = data.cell.text[0];
+                        let isFailed = false;
+
+                        if (colIdx === 14 && cellText === 'FAIL') isFailed = true;
+                        else if ((colIdx === 6 || colIdx === 7) && Math.abs(parseFloat(cellText)) > limitV20) isFailed = true;
+                        else if ((colIdx === 8 || colIdx === 9) && parseFloat(cellText) > limitSD20) isFailed = true;
+                        else if ((colIdx === 10 || colIdx === 11) && Math.abs(parseFloat(cellText)) > limitV80) isFailed = true;
+                        else if ((colIdx === 12 || colIdx === 13) && parseFloat(cellText) > limitSD80) isFailed = true;
+                        
+                        if (isFailed) {
+                            data.cell.styles.textColor = [220, 38, 38];
+                            data.cell.styles.fontStyle = 'bold';
+                        }
                     }
                 }
             });
