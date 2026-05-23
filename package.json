@@ -1,6 +1,6 @@
 {
   "name": "TrackLift-Pro",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "productName": "TrackLift Pro",
   "description": "Railway Line Vertical Alignment Smoother and Chord Inspector",
   "main": "main.js",
