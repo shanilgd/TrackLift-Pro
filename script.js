@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const APP_VERSION = "1.0.0";
+    const APP_VERSION = "1.0.2";
 
     // DOM Elements
     const elements = {
@@ -151,8 +151,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.electronAPI.checkForUpdates().then(res => {
                     if (!res.success) {
                         showToast("Failed to check for updates: " + res.error, "error");
-                    } else {
-                        showToast("Checking for updates...", "success");
                     }
                 });
             }, 1500);
