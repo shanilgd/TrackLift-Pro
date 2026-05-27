@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const APP_VERSION = "1.0.2";
+    const APP_VERSION = "1.0.3";
 
     // DOM Elements
     const elements = {
@@ -381,25 +381,30 @@ document.addEventListener('DOMContentLoaded', () => {
             return k + (m / 10000);
         }
         
-        // Handle decimal format (500.1100 or 500.010)
-        const parts = str.split('.');
-        if (parts.length === 2) {
-            const k = parseInt(parts[0]);
-            const mStr = parts[1];
-            const m = parseInt(mStr);
-            if (mStr.length >= 4) {
-                return k + (m / 10000);
-            }
-            
-            // Standard float representation: fractional part represents meters directly. E.g. 500.5 -> 500m
-            const floatVal = parseFloat(str);
-            const kF = Math.floor(floatVal);
-            const frac = floatVal - kF;
-            const meters = Math.round(frac * 1000);
-            return kF + (meters / 10000);
+        // Handle decimal format
+        const origParts = str.split('.');
+        if (origParts.length === 2 && origParts[1].length === 4) {
+            // Exact 4 digits after decimal indicates a manual long km entry (e.g. "497.1000")
+            // Note: This only works if Excel cell is formatted as Text to preserve trailing zeros.
+            const k = parseInt(origParts[0]);
+            const m = parseInt(origParts[1]);
+            return k + (m / 10000);
         }
         
-        return parseFloat(str);
+        let floatVal = parseFloat(str);
+        if (isNaN(floatVal)) return NaN;
+        
+        // Fix to 3 decimal places to avoid floating point anomalies (e.g. 498.9999999999 -> "499.000")
+        const fixedStr = floatVal.toFixed(3);
+        const parts = fixedStr.split('.');
+        
+        if (parts.length === 2) {
+            const k = parseInt(parts[0]);
+            const m = parseInt(parts[1]); // e.g. "150" -> 150
+            return k + (m / 10000);
+        }
+        
+        return floatVal;
     }
 
     function formatChainage(val) {
@@ -565,11 +570,53 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const reader = new FileReader();
         reader.onload = function (e) {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: 'array' });
-            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-            const jsonData = XLSX.utils.sheet_to_json(firstSheet);
-            processImportedData(jsonData);
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                
+                if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+                    throw new Error("No sheets found in the Excel file.");
+                }
+
+                let targetSheetName = null;
+                let targetJson = null;
+
+                // Scan all sheets to find one with a valid chainage column
+                for (const name of workbook.SheetNames) {
+                    const sheet = workbook.Sheets[name];
+                    const jsonData = XLSX.utils.sheet_to_json(sheet);
+                    if (jsonData && jsonData.length > 0) {
+                        const firstRow = jsonData[0];
+                        const keys = Object.keys(firstRow);
+                        const chainageKey = keys.find(k => {
+                            const l = k.toLowerCase().trim().replace(/[\s_\.\-]/g, '');
+                            return l === 'ch' || l.startsWith('ch') || l.includes('chainage') || l.includes('dist') || l.includes('km') || l.includes('station') || l.includes('stn');
+                        });
+                        if (chainageKey) {
+                            targetSheetName = name;
+                            targetJson = jsonData;
+                            break;
+                        }
+                    }
+                }
+
+                if (targetSheetName) {
+                    console.log(`Detected data in sheet: "${targetSheetName}"`);
+                    showToast(`Imported data from sheet: "${targetSheetName}"`);
+                } else {
+                    // Fallback to the first sheet
+                    targetSheetName = workbook.SheetNames[0];
+                    const sheet = workbook.Sheets[targetSheetName];
+                    targetJson = XLSX.utils.sheet_to_json(sheet);
+                    console.warn(`Could not automatically identify chainage column in any sheet. Defaulting to first sheet: "${targetSheetName}"`);
+                }
+
+                processImportedData(targetJson);
+            } catch (err) {
+                console.error("Excel import failed:", err);
+                showToast("Excel Import Error: " + err.message, "error");
+                alert("Excel Import Error: " + err.message);
+            }
         };
         reader.readAsArrayBuffer(file);
         e.target.value = '';
@@ -577,23 +624,52 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function processImportedData(jsonData) {
         if (!jsonData || jsonData.length === 0) {
-            alert("No data found in the spreadsheet!");
+            alert("No data found in the selected sheet!");
             return;
         }
         
         const firstRow = jsonData[0];
         const keys = Object.keys(firstRow);
         
-        const chainageKey = keys.find(k => k.toLowerCase().replace(/_/g, ' ').includes('chainage') || k.toLowerCase().includes('km') || k.toLowerCase().includes('station'));
-        const existKey = keys.find(k => k.toLowerCase().replace(/_/g, ' ').includes('exist') || k.toLowerCase().includes('level') || k.toLowerCase().includes('elevation'));
-        const propKey = keys.find(k => k.toLowerCase().replace(/_/g, ' ').includes('proposed') || k.toLowerCase().includes('design') || k.toLowerCase().includes('prop'));
-        const lockKey = keys.find(k => k.toLowerCase().includes('lock'));
-        const maxLiftKey = keys.find(k => k.toLowerCase().replace(/_/g, ' ').includes('max lift') || k.toLowerCase().includes('max_lift'));
-        const maxLowerKey = keys.find(k => k.toLowerCase().replace(/_/g, ' ').includes('max lower') || k.toLowerCase().includes('max_lower'));
-        const remarkKey = keys.find(k => k.toLowerCase().includes('remark'));
+        // Robust header matching using normalized keys
+        const chainageKey = keys.find(k => {
+            const l = k.toLowerCase().trim().replace(/[\s_\.\-]/g, '');
+            return l === 'ch' || l.startsWith('ch') || l.includes('chainage') || l.includes('dist') || l.includes('km') || l.includes('station') || l.includes('stn') || l.includes('sno') || l.includes('slno');
+        });
+        
+        const existKey = keys.find(k => {
+            const l = k.toLowerCase().trim().replace(/[\s_\.\-]/g, '');
+            if (l.includes('proposed') || l.includes('prop') || l.includes('design') || l.includes('new')) return false;
+            return l.includes('exist') || l.includes('ex') || l.includes('rl') || l.includes('level') || l.includes('elevation') || l.includes('height');
+        });
+        
+        const propKey = keys.find(k => {
+            const l = k.toLowerCase().trim().replace(/[\s_\.\-]/g, '');
+            return l.includes('proposed') || l.includes('prop') || l.includes('design') || l.includes('new');
+        });
+        
+        const lockKey = keys.find(k => {
+            const l = k.toLowerCase().trim().replace(/[\s_\.\-]/g, '');
+            return l.includes('lock') || l.includes('fix');
+        });
+        
+        const maxLiftKey = keys.find(k => {
+            const l = k.toLowerCase().trim().replace(/[\s_\.\-]/g, '');
+            return l.includes('maxlift') || (l.includes('lift') && l.includes('limit')) || l === 'maxliftlimit';
+        });
+        
+        const maxLowerKey = keys.find(k => {
+            const l = k.toLowerCase().trim().replace(/[\s_\.\-]/g, '');
+            return l.includes('maxlower') || (l.includes('lower') && l.includes('limit')) || l === 'maxlowerlimit';
+        });
+        
+        const remarkKey = keys.find(k => {
+            const l = k.toLowerCase().trim().replace(/[\s_\.\-]/g, '');
+            return l.includes('remark') || l.includes('note') || l.includes('comment');
+        });
         
         if (!chainageKey) {
-            alert("Could not identify the Chainage column. Please check your Excel headers.");
+            alert("Could not identify the Chainage column (sought: Chainage, Ch, Km, Station, etc.). Please check your Excel headers.");
             return;
         }
         
@@ -606,11 +682,21 @@ document.addEventListener('DOMContentLoaded', () => {
             let ch = parseUserChainage(chVal);
             if (isNaN(ch)) return;
             
-            let existVal = existKey ? parseFloat(row[existKey]) : NaN;
+            // Clean value strings by removing potential formatting commas
+            const cleanNumberStr = (val) => {
+                if (val === undefined || val === null) return "";
+                return val.toString().replace(/,/g, '').trim();
+            };
+
+            let existVal = NaN;
+            if (existKey && row[existKey] !== undefined && row[existKey] !== null) {
+                existVal = parseFloat(cleanNumberStr(row[existKey]));
+            }
+            
             if (isNaN(existVal)) {
-                // fallback to finding any other numeric field
-                const numKey = keys.find(k => k !== chainageKey && !isNaN(parseFloat(row[k])));
-                if (numKey) existVal = parseFloat(row[numKey]);
+                // Fallback to finding the first other numeric field in this row
+                const numKey = keys.find(k => k !== chainageKey && !isNaN(parseFloat(cleanNumberStr(row[k]))));
+                if (numKey) existVal = parseFloat(cleanNumberStr(row[numKey]));
             }
             
             if (isNaN(existVal)) {
@@ -618,7 +704,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
-            let propVal = propKey ? parseFloat(row[propKey]) : NaN;
+            let propVal = NaN;
+            if (propKey && row[propKey] !== undefined && row[propKey] !== null) {
+                propVal = parseFloat(cleanNumberStr(row[propKey]));
+            }
             if (isNaN(propVal)) propVal = existVal;
             
             let locked = false;
@@ -630,13 +719,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
             
-            let customMaxLiftVal = maxLiftKey ? parseFloat(row[maxLiftKey]) : NaN;
-            if (isNaN(customMaxLiftVal)) customMaxLiftVal = null;
+            let customMaxLiftVal = null;
+            if (maxLiftKey && row[maxLiftKey] !== undefined && row[maxLiftKey] !== null) {
+                const parsed = parseFloat(cleanNumberStr(row[maxLiftKey]));
+                if (!isNaN(parsed)) customMaxLiftVal = parsed;
+            }
             
-            let customMaxLowerVal = maxLowerKey ? parseFloat(row[maxLowerKey]) : NaN;
-            if (isNaN(customMaxLowerVal)) customMaxLowerVal = null;
+            let customMaxLowerVal = null;
+            if (maxLowerKey && row[maxLowerKey] !== undefined && row[maxLowerKey] !== null) {
+                const parsed = parseFloat(cleanNumberStr(row[maxLowerKey]));
+                if (!isNaN(parsed)) customMaxLowerVal = parsed;
+            }
             
-            let remarkVal = remarkKey ? (row[remarkKey] || "") : "";
+            let remarkVal = "";
+            if (remarkKey && row[remarkKey] !== undefined && row[remarkKey] !== null) {
+                remarkVal = row[remarkKey].toString().trim();
+            }
             
             appState.stations.push({
                 id: 'st_' + Math.random().toString(36).substr(2, 9),
@@ -646,7 +744,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 locked: locked,
                 customMaxLift: customMaxLiftVal,
                 customMaxLower: customMaxLowerVal,
-                remark: remarkVal.toString()
+                remark: remarkVal
             });
         });
         
@@ -675,7 +773,7 @@ document.addEventListener('DOMContentLoaded', () => {
         appState.zoomCenter = Math.floor((appState.stations.length - 1) / 2);
         appState.yCenterOffset = 0;
         if (elements.zoomHorizontalSlider) elements.zoomHorizontalSlider.value = "1";
-
+ 
         calculateMetrics();
         rebuildDataEntryTable();
         rebuildResultTable();
@@ -730,29 +828,58 @@ document.addEventListener('DOMContentLoaded', () => {
         const k20 = Math.round(10 / intervalMeters);
         const k80 = Math.round(40 / intervalMeters);
         
-        // 1. Versines
+        // Extrapolation helpers for boundary stations (virtual points used solely for calculations)
+        const s_start = N > 1 ? appState.stations[1].existingLevel - appState.stations[0].existingLevel : 0;
+        const s_end = N > 1 ? appState.stations[N - 1].existingLevel - appState.stations[N - 2].existingLevel : 0;
+
+        const getExtrapProposed = (idx) => {
+            if (idx < 0) return appState.stations[0].proposedLevel + idx * s_start;
+            if (idx >= N) return appState.stations[N - 1].proposedLevel + (idx - (N - 1)) * s_end;
+            return appState.stations[idx].proposedLevel;
+        };
+
+        const getExtrapExisting = (idx) => {
+            if (idx < 0) return appState.stations[0].existingLevel + idx * s_start;
+            if (idx >= N) return appState.stations[N - 1].existingLevel + (idx - (N - 1)) * s_end;
+            return appState.stations[idx].existingLevel;
+        };
+
+        // 1. Versines (computed over all stations using virtual extrapolation at boundaries)
         for (let i = 0; i < N; i++) {
-            if (i >= k20 && i < N - k20) {
-                if (appState.stations[i].proposedLevel !== null && appState.stations[i - k20].proposedLevel !== null && appState.stations[i + k20].proposedLevel !== null) {
-                    appState.stations[i].v20 = (appState.stations[i].proposedLevel - 0.5 * (appState.stations[i - k20].proposedLevel + appState.stations[i + k20].proposedLevel)) * 1000;
+            const p_curr = appState.stations[i].proposedLevel;
+            const p_prev_20 = getExtrapProposed(i - k20);
+            const p_next_20 = getExtrapProposed(i + k20);
+            if (p_curr !== null && p_prev_20 !== null && p_next_20 !== null) {
+                appState.stations[i].v20 = (p_curr - 0.5 * (p_prev_20 + p_next_20)) * 1000;
+                // Only mark as violated if it's not in the boundary stations (virtual values only)
+                if (i >= k20 && i < N - k20) {
                     if (Math.abs(appState.stations[i].v20) > limitV20) {
                         appState.stations[i].v20Violated = true;
                     }
                 }
-                if (appState.stations[i].existingLevel !== null && appState.stations[i - k20].existingLevel !== null && appState.stations[i + k20].existingLevel !== null) {
-                    appState.stations[i].existV20 = (appState.stations[i].existingLevel - 0.5 * (appState.stations[i - k20].existingLevel + appState.stations[i + k20].existingLevel)) * 1000;
-                }
             }
-            if (i >= k80 && i < N - k80) {
-                if (appState.stations[i].proposedLevel !== null && appState.stations[i - k80].proposedLevel !== null && appState.stations[i + k80].proposedLevel !== null) {
-                    appState.stations[i].v80 = (appState.stations[i].proposedLevel - 0.5 * (appState.stations[i - k80].proposedLevel + appState.stations[i + k80].proposedLevel)) * 1000;
+            const e_curr = appState.stations[i].existingLevel;
+            const e_prev_20 = getExtrapExisting(i - k20);
+            const e_next_20 = getExtrapExisting(i + k20);
+            if (e_curr !== null && e_prev_20 !== null && e_next_20 !== null) {
+                appState.stations[i].existV20 = (e_curr - 0.5 * (e_prev_20 + e_next_20)) * 1000;
+            }
+
+            const p_prev_80 = getExtrapProposed(i - k80);
+            const p_next_80 = getExtrapProposed(i + k80);
+            if (p_curr !== null && p_prev_80 !== null && p_next_80 !== null) {
+                appState.stations[i].v80 = (p_curr - 0.5 * (p_prev_80 + p_next_80)) * 1000;
+                // Only mark as violated if it's not in the boundary stations (virtual values only)
+                if (i >= k80 && i < N - k80) {
                     if (Math.abs(appState.stations[i].v80) > limitV80) {
                         appState.stations[i].v80Violated = true;
                     }
                 }
-                if (appState.stations[i].existingLevel !== null && appState.stations[i - k80].existingLevel !== null && appState.stations[i + k80].existingLevel !== null) {
-                    appState.stations[i].existV80 = (appState.stations[i].existingLevel - 0.5 * (appState.stations[i - k80].existingLevel + appState.stations[i + k80].existingLevel)) * 1000;
-                }
+            }
+            const e_prev_80 = getExtrapExisting(i - k80);
+            const e_next_80 = getExtrapExisting(i + k80);
+            if (e_curr !== null && e_prev_80 !== null && e_next_80 !== null) {
+                appState.stations[i].existV80 = (e_curr - 0.5 * (e_prev_80 + e_next_80)) * 1000;
             }
         }
         
@@ -897,12 +1024,25 @@ document.addEventListener('DOMContentLoaded', () => {
         const limitSD20 = parseFloat(elements.limitSD20.value) || 2;
         const limitSD80 = parseFloat(elements.limitSD80.value) || 20;
         
-        appState.stations.forEach(st => {
+        const intervalMeters = parseFloat(elements.interval.value) || 10;
+        const k80 = Math.round(40 / intervalMeters);
+        const N = appState.stations.length;
+        
+        // Define k20 for dashboard
+        const k20 = Math.round(10 / intervalMeters);
+        
+        appState.stations.forEach((st, idx) => {
             if (st.liftLower > maxLift) maxLift = st.liftLower;
             if (st.liftLower < -maxLower) maxLower = -st.liftLower;
             
-            if (st.v20 !== null && Math.abs(st.v20) > maxV20) maxV20 = Math.abs(st.v20);
-            if (st.v80 !== null && Math.abs(st.v80) > maxV80) maxV80 = Math.abs(st.v80);
+            // Exclude boundary stations for user-facing max V20
+            if (idx >= k20 && idx < N - k20 && st.v20 !== null && Math.abs(st.v20) > maxV20) {
+                maxV20 = Math.abs(st.v20);
+            }
+            // Exclude boundary stations for user-facing max V80
+            if (idx >= k80 && idx < N - k80 && st.v80 !== null && Math.abs(st.v80) > maxV80) {
+                maxV80 = Math.abs(st.v80);
+            }
             
             if (st.sd20 !== null && st.sd20 > maxSD20) maxSD20 = st.sd20;
             if (st.sd80 !== null && st.sd80 > maxSD80) maxSD80 = st.sd80;
@@ -982,6 +1122,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const smoothWeightVal = parseInt(elements.optSmoothWeight.value) || 10;
         const maxIterVal = parseInt(elements.optIterations.value) || 1000;
         
+        // Reset non-locked proposed levels to existing levels baseline
+        appState.stations.forEach(st => {
+            if (!st.locked) {
+                st.proposedLevel = st.existingLevel;
+            } else if (st.proposedLevel === null) {
+                st.proposedLevel = st.existingLevel;
+            }
+        });
+
         solverState = {
             running: true,
             iteration: 0,
@@ -1078,7 +1227,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const grad = new Array(N).fill(0);
         
-        // 1. Lift/Lower deviation gradient (with 10x penalty for lowering to bias solver towards lifting)
+        // 1. Lift/Lower deviation gradient (with 10.0x penalty for lowering to bias solver towards lifting)
         for (let i = 0; i < N; i++) {
             const diff = P[i] - E[i];
             if (diff < 0) {
@@ -1088,12 +1237,29 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         
-        // 2. Curvature (smoothness) gradient (V20 proxy in meters)
-        for (let i = k20; i < N - k20; i++) {
-            const c = P[i] - 0.5 * (P[i - k20] + P[i + k20]);
+        // Extrapolation helpers for boundary gradient computations (virtual points behave as fixed endpoints)
+        const s_start = N > 1 ? E[1] - E[0] : 0;
+        const s_end = N > 1 ? E[N - 1] - E[N - 2] : 0;
+
+        const getP = (idx) => {
+            if (idx < 0) return E[0] + idx * s_start;
+            if (idx >= N) return E[N - 1] + (idx - (N - 1)) * s_end;
+            return P[idx];
+        };
+
+        // 2. Curvature (smoothness) gradient (V20 proxy in meters, computed over all stations with boundary extrapolation)
+        for (let i = 0; i < N; i++) {
+            const c = P[i] - 0.5 * (getP(i - k20) + getP(i + k20));
             grad[i] += w_curv * 2 * c;
-            grad[i - k20] += w_curv * 2 * c * (-0.5);
-            grad[i + k20] += w_curv * 2 * c * (-0.5);
+            
+            const prev_idx = i - k20;
+            if (prev_idx >= 0) {
+                grad[prev_idx] += w_curv * 2 * c * (-0.5);
+            }
+            const next_idx = i + k20;
+            if (next_idx < N) {
+                grad[next_idx] += w_curv * 2 * c * (-0.5);
+            }
         }
         
         // 3. Jolt (3rd derivative spline-like) gradient
@@ -1107,10 +1273,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         
-        // 4. Versine limits gradients (differentiable penalty in meters)
+        // 4. Versine limits gradients (differentiable penalty in meters, evaluated over all stations)
         // V20 limit
-        for (let i = k20; i < N - k20; i++) {
-            const v = P[i] - 0.5 * (P[i - k20] + P[i + k20]); // in meters
+        for (let i = 0; i < N; i++) {
+            const v = P[i] - 0.5 * (getP(i - k20) + getP(i + k20)); // in meters
             const v_mm = v * 1000.0;
             if (Math.abs(v_mm) > limitV20) {
                 const diff_mm = Math.abs(v_mm) - limitV20;
@@ -1118,13 +1284,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 const sign = Math.sign(v_mm);
                 const g_v_m = 2 * K_pen * diff_m * sign;
                 grad[i] += g_v_m;
-                grad[i - k20] += g_v_m * (-0.5);
-                grad[i + k20] += g_v_m * (-0.5);
+                
+                const prev_idx = i - k20;
+                if (prev_idx >= 0) {
+                    grad[prev_idx] += g_v_m * (-0.5);
+                }
+                const next_idx = i + k20;
+                if (next_idx < N) {
+                    grad[next_idx] += g_v_m * (-0.5);
+                }
             }
         }
         // V80 limit
-        for (let i = k80; i < N - k80; i++) {
-            const v = P[i] - 0.5 * (P[i - k80] + P[i + k80]); // in meters
+        for (let i = 0; i < N; i++) {
+            const v = P[i] - 0.5 * (getP(i - k80) + getP(i + k80)); // in meters
             const v_mm = v * 1000.0;
             if (Math.abs(v_mm) > limitV80) {
                 const diff_mm = Math.abs(v_mm) - limitV80;
@@ -1132,12 +1305,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 const sign = Math.sign(v_mm);
                 const g_v_m = 2 * K_pen * diff_m * sign;
                 grad[i] += g_v_m;
-                grad[i - k80] += g_v_m * (-0.5);
-                grad[i + k80] += g_v_m * (-0.5);
+                
+                const prev_idx = i - k80;
+                if (prev_idx >= 0) {
+                    grad[prev_idx] += g_v_m * (-0.5);
+                }
+                const next_idx = i + k80;
+                if (next_idx < N) {
+                    grad[next_idx] += g_v_m * (-0.5);
+                }
             }
         }
         
-        // 5. Sliding Block SD gradients (in meters scale)
+        // 5. Sliding Block SD gradients (in meters scale, evaluated over all stations)
         if (blocksCount > 0) {
             for (let j = 0; j < blocksCount; j++) {
                 const startIdx = j;
@@ -1147,11 +1327,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const v20Vals = [];
                 const v20Indices = [];
                 for (let idx = startIdx; idx <= endIdx; idx++) {
-                    if (idx >= k20 && idx < N - k20) {
-                        const v = P[idx] - 0.5 * (P[idx - k20] + P[idx + k20]); // in meters
-                        v20Vals.push(v);
-                        v20Indices.push(idx);
-                    }
+                    const v = P[idx] - 0.5 * (getP(idx - k20) + getP(idx + k20)); // in meters
+                    v20Vals.push(v);
+                    v20Indices.push(idx);
                 }
                 if (v20Vals.length > 1) {
                     const mean = v20Vals.reduce((sum, v) => sum + v, 0) / v20Vals.length;
@@ -1165,8 +1343,15 @@ document.addEventListener('DOMContentLoaded', () => {
                             const idx = v20Indices[k];
                             const g_v_m = factor * (v20Vals[k] - mean);
                             grad[idx] += g_v_m;
-                            grad[idx - k20] += g_v_m * (-0.5);
-                            grad[idx + k20] += g_v_m * (-0.5);
+                            
+                            const prev_idx = idx - k20;
+                            if (prev_idx >= 0) {
+                                grad[prev_idx] += g_v_m * (-0.5);
+                            }
+                            const next_idx = idx + k20;
+                            if (next_idx < N) {
+                                grad[next_idx] += g_v_m * (-0.5);
+                            }
                         }
                     }
                 }
@@ -1175,11 +1360,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const v80Vals = [];
                 const v80Indices = [];
                 for (let idx = startIdx; idx <= endIdx; idx++) {
-                    if (idx >= k80 && idx < N - k80) {
-                        const v = P[idx] - 0.5 * (P[idx - k80] + P[idx + k80]); // in meters
-                        v80Vals.push(v);
-                        v80Indices.push(idx);
-                    }
+                    const v = P[idx] - 0.5 * (getP(idx - k80) + getP(idx + k80)); // in meters
+                    v80Vals.push(v);
+                    v80Indices.push(idx);
                 }
                 if (v80Vals.length > 1) {
                     const mean = v80Vals.reduce((sum, v) => sum + v, 0) / v80Vals.length;
@@ -1193,8 +1376,15 @@ document.addEventListener('DOMContentLoaded', () => {
                             const idx = v80Indices[k];
                             const g_v_m = factor * (v80Vals[k] - mean);
                             grad[idx] += g_v_m;
-                            grad[idx - k80] += g_v_m * (-0.5);
-                            grad[idx + k80] += g_v_m * (-0.5);
+                            
+                            const prev_idx = idx - k80;
+                            if (prev_idx >= 0) {
+                                grad[prev_idx] += g_v_m * (-0.5);
+                            }
+                            const next_idx = idx + k80;
+                            if (next_idx < N) {
+                                grad[next_idx] += g_v_m * (-0.5);
+                            }
                         }
                     }
                 }
@@ -1815,6 +2005,22 @@ document.addEventListener('DOMContentLoaded', () => {
         const limitSD80 = parseFloat(elements.limitSD80.value) || 20;
         
         const query = elements.resultSearch ? elements.resultSearch.value.toLowerCase().trim() : "";
+
+        const N = appState.stations.length;
+        const s_start = N > 1 ? appState.stations[1].existingLevel - appState.stations[0].existingLevel : 0;
+        const s_end = N > 1 ? appState.stations[N - 1].existingLevel - appState.stations[N - 2].existingLevel : 0;
+
+        const getExtrapProposed = (i) => {
+            if (i < 0) return appState.stations[0].proposedLevel + i * s_start;
+            if (i >= N) return appState.stations[N - 1].proposedLevel + (i - (N - 1)) * s_end;
+            return appState.stations[i].proposedLevel;
+        };
+
+        const getExtrapExisting = (i) => {
+            if (i < 0) return appState.stations[0].existingLevel + i * s_start;
+            if (i >= N) return appState.stations[N - 1].existingLevel + (i - (N - 1)) * s_end;
+            return appState.stations[i].existingLevel;
+        };
         
         appState.stations.forEach((st, idx) => {
             const chDisplay = formatChainage(st.chainage);
@@ -1824,24 +2030,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (st.v20Violated || st.v80Violated || st.sd20Violated || st.sd80Violated || st.liftViolated || st.lowerViolated) {
                 tr.className = "row-violated";
             }
-            
-            // 1. Lock
-            const tdLock = document.createElement('td');
-            tdLock.style.textAlign = "center";
-            const chkLock = document.createElement('input');
-            chkLock.type = "checkbox";
-            chkLock.checked = st.locked;
-            if (idx === 0 || idx === appState.stations.length - 1) {
-                chkLock.disabled = true;
-            }
-            chkLock.onchange = (e) => {
-                st.locked = e.target.checked;
-                calculateMetrics();
-                updateChart();
-                rebuildDataEntryTable();
-            };
-            tdLock.appendChild(chkLock);
-            tr.appendChild(tdLock);
             
             // 2. Station No
             const tdNo = document.createElement('td');
@@ -1928,13 +2116,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 7. Exist V20
             const tdExistV20 = document.createElement('td');
-            if (st.existV20 !== null) {
+            if (st.existV20 !== null && idx >= k20 && idx < N - k20) {
                 tdExistV20.textContent = st.existV20.toFixed(1);
                 const isViolated = Math.abs(st.existV20) > limitV20;
                 tdExistV20.className = isViolated ? "cell-violated" : "cell-success";
                 const pMid = st.existingLevel.toFixed(3);
-                const pLeft = appState.stations[idx - k20].existingLevel.toFixed(3);
-                const pRight = appState.stations[idx + k20].existingLevel.toFixed(3);
+                const pLeft = getExtrapExisting(idx - k20).toFixed(3);
+                const pRight = getExtrapExisting(idx + k20).toFixed(3);
                 const chordAvg = ((parseFloat(pLeft) + parseFloat(pRight)) / 2).toFixed(3);
                 
                 const calcHtml = `
@@ -1952,12 +2140,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 8. Prop V20
             const tdV20 = document.createElement('td');
-            if (st.v20 !== null) {
+            if (st.v20 !== null && idx >= k20 && idx < N - k20) {
                 tdV20.textContent = st.v20.toFixed(1);
                 tdV20.className = st.v20Violated ? "cell-violated" : "cell-success";
                 const pMid = st.proposedLevel.toFixed(3);
-                const pLeft = appState.stations[idx - k20].proposedLevel.toFixed(3);
-                const pRight = appState.stations[idx + k20].proposedLevel.toFixed(3);
+                const pLeft = getExtrapProposed(idx - k20).toFixed(3);
+                const pRight = getExtrapProposed(idx + k20).toFixed(3);
                 const chordAvg = ((parseFloat(pLeft) + parseFloat(pRight)) / 2).toFixed(3);
                 
                 const calcHtml = `
@@ -2015,13 +2203,13 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // 11. Exist V80
             const tdExistV80 = document.createElement('td');
-            if (st.existV80 !== null) {
+            if (st.existV80 !== null && idx >= k80 && idx < N - k80) {
                 tdExistV80.textContent = st.existV80.toFixed(1);
                 const isViolated = Math.abs(st.existV80) > limitV80;
                 tdExistV80.className = isViolated ? "cell-violated" : "cell-success";
                 const pMid = st.existingLevel.toFixed(3);
-                const pLeft = appState.stations[idx - k80].existingLevel.toFixed(3);
-                const pRight = appState.stations[idx + k80].existingLevel.toFixed(3);
+                const pLeft = getExtrapExisting(idx - k80).toFixed(3);
+                const pRight = getExtrapExisting(idx + k80).toFixed(3);
                 const chordAvg = ((parseFloat(pLeft) + parseFloat(pRight)) / 2).toFixed(3);
                 
                 const calcHtml = `
@@ -2039,12 +2227,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 12. Prop V80
             const tdV80 = document.createElement('td');
-            if (st.v80 !== null) {
+            if (st.v80 !== null && idx >= k80 && idx < N - k80) {
                 tdV80.textContent = st.v80.toFixed(1);
                 tdV80.className = st.v80Violated ? "cell-violated" : "cell-success";
                 const pMid = st.proposedLevel.toFixed(3);
-                const pLeft = appState.stations[idx - k80].proposedLevel.toFixed(3);
-                const pRight = appState.stations[idx + k80].proposedLevel.toFixed(3);
+                const pLeft = getExtrapProposed(idx - k80).toFixed(3);
+                const pRight = getExtrapProposed(idx + k80).toFixed(3);
                 const chordAvg = ((parseFloat(pLeft) + parseFloat(pRight)) / 2).toFixed(3);
                 
                 const calcHtml = `
@@ -2094,6 +2282,11 @@ document.addEventListener('DOMContentLoaded', () => {
             alert("No data available to export!");
             return;
         }
+
+        const intervalMeters = parseFloat(elements.interval.value) || 10;
+        const k20 = Math.round(10 / intervalMeters);
+        const k80 = Math.round(40 / intervalMeters);
+        const N = appState.stations.length;
         
         // Sheet 1: Title & Project details
         const detailsData = [
@@ -2132,12 +2325,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 st.customMaxLower !== null ? st.customMaxLower : "",
                 st.remark || "",
                 liftText,
-                st.existV20 !== null ? st.existV20.toFixed(1) : "-",
-                st.v20 !== null ? st.v20.toFixed(1) : "-",
+                st.existV20 !== null && idx >= k20 && idx < N - k20 ? st.existV20.toFixed(1) : "-",
+                st.v20 !== null && idx >= k20 && idx < N - k20 ? st.v20.toFixed(1) : "-",
                 st.existSd20 !== null ? st.existSd20.toFixed(1) : "-",
                 st.sd20 !== null ? st.sd20.toFixed(1) : "-",
-                st.existV80 !== null ? st.existV80.toFixed(1) : "-",
-                st.v80 !== null ? st.v80.toFixed(1) : "-",
+                st.existV80 !== null && idx >= k80 && idx < N - k80 ? st.existV80.toFixed(1) : "-",
+                st.v80 !== null && idx >= k80 && idx < N - k80 ? st.v80.toFixed(1) : "-",
                 st.existSd80 !== null ? st.existSd80.toFixed(1) : "-",
                 st.sd80 !== null ? st.sd80.toFixed(1) : "-",
                 violated ? "FAIL" : "PASS"
@@ -2265,6 +2458,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 ["No.", "Chainage", "Exist. (m)", "Proposed (m)", "Remark", "Lift/Lower (mm)", "Ex.V20", "Pr.V20", "Ex.SD20", "Pr.SD20", "Ex.V80", "Pr.V80", "Ex.SD80", "Pr.SD80", "Status"]
             ];
             
+            const intervalMeters = parseFloat(elements.interval.value) || 10;
+            const k20 = Math.round(10 / intervalMeters);
+            const k80 = Math.round(40 / intervalMeters);
+            const N = appState.stations.length;
+
             const bodyData = appState.stations.map((st, idx) => {
                 const liftText = st.liftLower >= 0 ? `+${st.liftLower.toFixed(1)}` : st.liftLower.toFixed(1);
                 const violated = st.v20Violated || st.v80Violated || st.sd20Violated || st.sd80Violated;
@@ -2275,12 +2473,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     st.proposedLevel.toFixed(3),
                     st.remark || "",
                     liftText,
-                    st.existV20 !== null ? st.existV20.toFixed(1) : "-",
-                    st.v20 !== null ? st.v20.toFixed(1) : "-",
+                    st.existV20 !== null && idx >= k20 && idx < N - k20 ? st.existV20.toFixed(1) : "-",
+                    st.v20 !== null && idx >= k20 && idx < N - k20 ? st.v20.toFixed(1) : "-",
                     st.existSd20 !== null ? st.existSd20.toFixed(1) : "-",
                     st.sd20 !== null ? st.sd20.toFixed(1) : "-",
-                    st.existV80 !== null ? st.existV80.toFixed(1) : "-",
-                    st.v80 !== null ? st.v80.toFixed(1) : "-",
+                    st.existV80 !== null && idx >= k80 && idx < N - k80 ? st.existV80.toFixed(1) : "-",
+                    st.v80 !== null && idx >= k80 && idx < N - k80 ? st.v80.toFixed(1) : "-",
                     st.existSd80 !== null ? st.existSd80.toFixed(1) : "-",
                     st.sd80 !== null ? st.sd80.toFixed(1) : "-",
                     violated ? "FAIL" : "PASS"

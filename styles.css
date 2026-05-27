@@ -363,7 +363,7 @@ input::placeholder {
 }
 
 /* Tables */
-.table-scroller {
+.table-container {
     overflow-x: auto;
     border-radius: 12px;
     border: 1px solid var(--card-border);
@@ -385,13 +385,16 @@ th, td {
     font-size: 0.9rem;
 }
 
+thead {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
 th {
     background: rgba(15, 23, 42, 0.95);
     font-weight: 600;
     color: var(--text-muted);
-    position: sticky;
-    top: 0;
-    z-index: 10;
     backdrop-filter: blur(8px);
 }
 

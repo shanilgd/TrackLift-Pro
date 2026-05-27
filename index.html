@@ -24,7 +24,7 @@
             <div>
                 <h1>
                     <i class="fa-solid fa-train" style="color: #60a5fa;"></i> TrackLift Pro
-                    <span id="app-version" class="version-tag">v1.0.2</span>
+                    <span id="app-version" class="version-tag">v1.0.3</span>
                 </h1>
                 <p class="subtitle">Vertical Rail Profile Optimizer</p>
             </div>
@@ -347,20 +347,23 @@
                     <table id="result-table">
                         <thead>
                             <tr>
-                                <th style="width: 60px;">Lock</th>
-                                <th style="width: 80px;">No.</th>
-                                <th>Chainage</th>
-                                <th>Existing Level (m)</th>
-                                <th>Proposed Level (m)</th>
-                                <th>Lift/Lower (mm)</th>
-                                <th>Exist. 20m Versine</th>
-                                <th>Prop. 20m Versine</th>
-                                <th>Exist. 20m SD</th>
-                                <th>Prop. 20m SD</th>
-                                <th>Exist. 80m Versine</th>
-                                <th>Prop. 80m Versine</th>
-                                <th>Exist. 80m SD</th>
-                                <th>Prop. 80m SD</th>
+                                <th rowspan="2" style="width: 80px; text-align: center; vertical-align: middle;">No.</th>
+                                <th rowspan="2" style="vertical-align: middle;">Chainage</th>
+                                <th rowspan="2" style="vertical-align: middle;">Existing Level (m)</th>
+                                <th rowspan="2" style="vertical-align: middle;">Proposed Level (m)</th>
+                                <th rowspan="2" style="vertical-align: middle;">Lift/Lower (mm)</th>
+                                <th colspan="4" style="text-align: center; border-bottom: 1px solid var(--border-light);">20m Chord</th>
+                                <th colspan="4" style="text-align: center; border-bottom: 1px solid var(--border-light);">80m Chord</th>
+                            </tr>
+                            <tr>
+                                <th style="text-align: center;">Exist. V</th>
+                                <th style="text-align: center;">Prop. V</th>
+                                <th style="text-align: center;">Exist. SD</th>
+                                <th style="text-align: center;">Prop. SD</th>
+                                <th style="text-align: center;">Exist. V</th>
+                                <th style="text-align: center;">Prop. V</th>
+                                <th style="text-align: center;">Exist. SD</th>
+                                <th style="text-align: center;">Prop. SD</th>
                             </tr>
                         </thead>
                         <tbody id="result-table-body">
@@ -411,7 +414,7 @@
                 </div>
                 <div class="modal-body" style="line-height: 1.6; padding: 10px 0;">
                     <p style="font-size: 1.2rem; font-weight: 600; margin-bottom: 0.5rem;">TrackLift Pro</p>
-                    <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 1.5rem;">Version 1.0.2</p>
+                    <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 1.5rem;">Version 1.0.3</p>
                     <p>Designed and Programmed by</p>
                     <p style="font-size: 1.15rem; font-weight: 700; color: #60a5fa;">SHANIL G D (SSE PWAY)</p>
                     <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.5rem;">Southern Railway, India</p>
@@ -427,6 +430,16 @@
                     <h2><i class="fa-solid fa-clock-rotate-left"></i> Version History</h2>
                 </div>
                 <div class="modal-body" style="max-height: 400px; overflow-y: auto; text-align: left; line-height: 1.5;">
+                    <div style="margin-bottom: 1.5rem;">
+                        <h3 style="color: #60a5fa; margin-bottom: 0.25rem;">v1.0.3 (May 2026)</h3>
+                        <ul style="padding-left: 1.25rem;">
+                            <li>Fixed results table header sticky depth and layout alignment mismatch.</li>
+                            <li>Fixed Excel import parsing and auto-sheet detection robustness.</li>
+                            <li>Restored lowering deviation penalty multiplier to 10.0x.</li>
+                            <li>Hidden boundary chord readings (V20/V80) from dashboard metrics and user-facing tables.</li>
+                            <li>Removed redundant lock column from results panel.</li>
+                        </ul>
+                    </div>
                     <div style="margin-bottom: 1.5rem;">
                         <h3 style="color: #60a5fa; margin-bottom: 0.25rem;">v1.0.2 (May 2026)</h3>
                         <ul style="padding-left: 1.25rem;">
@@ -501,6 +514,11 @@
                         <li>If necessary, manually lock specific station levels or edit the Proposed levels in the table. The profile chart, lifts, versines, and compliance stats will update instantly!</li>
                         <li>Export a detailed PDF engineering report or Excel spreadsheet.</li>
                     </ol>
+
+                    <h3 style="color: #60a5fa; margin-bottom: 0.5rem;">6. Handling Short & Long KMs</h3>
+                    <p style="margin-bottom: 1rem;">
+                        The optimization engine calculates physical distances strictly based on the <b>sequential row intervals</b> imported, rather than calculating distance from the chainage text itself. To handle short or long KMs (e.g. 500.980 jumping directly to 501.000), simply ensure your stations in the imported <b>Excel file</b> are listed sequentially and represent an equal physical distance (e.g. 10m) between each row. Avoid using the "Generate Grid" function for these specific stretches as it assumes a perfect 1000m length per Km.
+                    </p>
                 </div>
             </div>
         </div>

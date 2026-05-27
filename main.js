@@ -16,6 +16,12 @@ function createWindow() {
         }
     });
 
+    mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
+        const levels = ['DEBUG', 'INFO', 'WARN', 'ERROR'];
+        const lvl = levels[level] || 'LOG';
+        console.log(`[RENDERER - ${lvl}] ${message} (at ${path.basename(sourceId)}:${line})`);
+    });
+
     mainWindow.loadFile('index.html');
     mainWindow.setMenuBarVisibility(false);
 }
