@@ -95,6 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
         resultSection: document.getElementById('result-section'),
         resultSearch: document.getElementById('result-search'),
         btnExportPdf: document.getElementById('btn-export-pdf'),
+        btnExportTampingPdf: document.getElementById('btn-export-tamping-pdf'),
         btnExportExcel: document.getElementById('btn-export-excel'),
         resultTableBody: document.getElementById('result-table-body'),
         
@@ -364,6 +365,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (elements.btnExportPdf) elements.btnExportPdf.addEventListener('click', exportPDF);
+    if (elements.btnExportTampingPdf) elements.btnExportTampingPdf.addEventListener('click', exportTampingPDF);
     if (elements.btnExportExcel) elements.btnExportExcel.addEventListener('click', exportExcel);
 
     // --- Chainage Helpers ---
@@ -2304,16 +2306,14 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Sheet 2: Station Level Book
         const tableHeaders = [
-            "Station No", "Chainage", "Existing Level (m)", "Proposed Level (m)", "Locked",
-            "Custom Max Lift (mm)", "Custom Max Lower (mm)", "Remark",
-            "Lift(+)/Lower(-) (mm)", "Exist 20m Versine (mm)", "Prop 20m Versine (mm)", 
-            "Exist 20m Block SD (mm)", "Prop 20m Block SD (mm)", "Exist 80m Versine (mm)", 
-            "Prop 80m Versine (mm)", "Exist 80m Block SD (mm)", "Prop 80m Block SD (mm)", 
-            "Compliance Status"
+            "Station No", "Chainage", "Existing\nLevel (m)", "Proposed\nLevel (m)", "Locked",
+            "Lift(+)/Lower(-)\n(mm)", "Exist 20m\nVersine (mm)", "Prop 20m\nVersine (mm)", 
+            "Exist 20m\nBlock SD (mm)", "Prop 20m\nBlock SD (mm)", "Exist 80m\nVersine (mm)", 
+            "Prop 80m\nVersine (mm)", "Exist 80m\nBlock SD (mm)", "Prop 80m\nBlock SD (mm)", 
+            "Remark"
         ];
         
         const tableData = appState.stations.map((st, idx) => {
-            const violated = st.v20Violated || st.v80Violated || st.sd20Violated || st.sd80Violated || st.liftViolated || st.lowerViolated;
             const liftText = st.liftLower >= 0 ? `+${st.liftLower.toFixed(1)}` : st.liftLower.toFixed(1);
             return [
                 idx + 1,
@@ -2321,9 +2321,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 st.existingLevel,
                 st.proposedLevel,
                 st.locked ? "TRUE" : "FALSE",
-                st.customMaxLift !== null ? st.customMaxLift : "",
-                st.customMaxLower !== null ? st.customMaxLower : "",
-                st.remark || "",
                 liftText,
                 st.existV20 !== null && idx >= k20 && idx < N - k20 ? st.existV20.toFixed(1) : "-",
                 st.v20 !== null && idx >= k20 && idx < N - k20 ? st.v20.toFixed(1) : "-",
@@ -2333,18 +2330,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 st.v80 !== null && idx >= k80 && idx < N - k80 ? st.v80.toFixed(1) : "-",
                 st.existSd80 !== null ? st.existSd80.toFixed(1) : "-",
                 st.sd80 !== null ? st.sd80.toFixed(1) : "-",
-                violated ? "FAIL" : "PASS"
+                st.remark || ""
             ];
         });
         
         const wsTable = XLSX.utils.aoa_to_sheet([tableHeaders, ...tableData]);
+        
+        // Apply basic styling to headers (works if library supports it, otherwise safely ignored)
+        for (let C = 0; C < tableHeaders.length; C++) {
+            const cellAddress = XLSX.utils.encode_cell({c: C, r: 0});
+            if (wsTable[cellAddress]) {
+                wsTable[cellAddress].s = {
+                    fill: { patternType: "solid", fgColor: { rgb: "3B82F6" } },
+                    font: { bold: true, color: { rgb: "FFFFFF" } },
+                    alignment: { wrapText: true, horizontal: "center", vertical: "center" }
+                };
+            }
+        }
+        
         wsTable['!cols'] = [
-            { wch: 12 }, { wch: 15 }, { wch: 20 }, { wch: 20 }, { wch: 10 },
-            { wch: 20 }, { wch: 20 }, { wch: 25 },
-            { wch: 22 }, { wch: 22 }, { wch: 22 },
-            { wch: 22 }, { wch: 22 }, { wch: 22 },
-            { wch: 22 }, { wch: 22 }, { wch: 22 },
-            { wch: 18 }
+            { wch: 10 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 8 },
+            { wch: 15 }, { wch: 14 }, { wch: 14 }, 
+            { wch: 14 }, { wch: 14 }, { wch: 14 }, 
+            { wch: 14 }, { wch: 14 }, { wch: 14 }, 
+            { wch: 25 }
         ];
         
         const wb = XLSX.utils.book_new();
@@ -2353,7 +2362,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const startCh = appState.stations[0].chainage;
         const endCh = appState.stations[appState.stations.length - 1].chainage;
-        const filename = `LevelBook_Ch${startCh.toFixed(3)}_to_${endCh.toFixed(3)}.xlsx`;
+        const filename = `LevelBook_Ch${formatInputChainage(startCh)}_to_${formatInputChainage(endCh)}.xlsx`;
         
         XLSX.writeFile(wb, filename);
         showToast("Excel Report exported successfully.");
@@ -2455,7 +2464,20 @@ document.addEventListener('DOMContentLoaded', () => {
             doc.text("Station-Wise Detailed Level Book", 14, 18);
             
             const headers = [
-                ["No.", "Chainage", "Exist. (m)", "Proposed (m)", "Remark", "Lift/Lower (mm)", "Ex.V20", "Pr.V20", "Ex.SD20", "Pr.SD20", "Ex.V80", "Pr.V80", "Ex.SD80", "Pr.SD80", "Status"]
+                [
+                    { content: "No.", rowSpan: 2 },
+                    { content: "Chainage", rowSpan: 2 },
+                    { content: "Exist. (m)", rowSpan: 2 },
+                    { content: "Proposed (m)", rowSpan: 2 },
+                    { content: "Lift/Lower\n(mm)", rowSpan: 2 },
+                    { content: "20m Chord", colSpan: 4 },
+                    { content: "80m Chord", colSpan: 4 },
+                    { content: "Remark", rowSpan: 2 }
+                ],
+                [
+                    "Ex.V", "Pr.V", "Ex.SD", "Pr.SD",
+                    "Ex.V", "Pr.V", "Ex.SD", "Pr.SD"
+                ]
             ];
             
             const intervalMeters = parseFloat(elements.interval.value) || 10;
@@ -2465,13 +2487,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const bodyData = appState.stations.map((st, idx) => {
                 const liftText = st.liftLower >= 0 ? `+${st.liftLower.toFixed(1)}` : st.liftLower.toFixed(1);
-                const violated = st.v20Violated || st.v80Violated || st.sd20Violated || st.sd80Violated;
                 return [
                     idx + 1,
                     formatChainage(st.chainage),
                     st.existingLevel.toFixed(3),
                     st.proposedLevel.toFixed(3),
-                    st.remark || "",
                     liftText,
                     st.existV20 !== null && idx >= k20 && idx < N - k20 ? st.existV20.toFixed(1) : "-",
                     st.v20 !== null && idx >= k20 && idx < N - k20 ? st.v20.toFixed(1) : "-",
@@ -2481,7 +2501,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     st.v80 !== null && idx >= k80 && idx < N - k80 ? st.v80.toFixed(1) : "-",
                     st.existSd80 !== null ? st.existSd80.toFixed(1) : "-",
                     st.sd80 !== null ? st.sd80.toFixed(1) : "-",
-                    violated ? "FAIL" : "PASS"
+                    st.remark || ""
                 ];
             });
             
@@ -2495,19 +2515,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 head: headers,
                 body: bodyData,
                 theme: 'grid',
-                headStyles: { fillColor: [40, 50, 60], fontSize: 8, textColor: 255 },
-                styles: { fontSize: 8, cellPadding: 2 },
+                headStyles: { fillColor: [40, 50, 60], fontSize: 7, textColor: 255, halign: 'center', valign: 'middle' },
+                styles: { fontSize: 7, cellPadding: 1.5, halign: 'center', valign: 'middle' },
+                columnStyles: {
+                    13: { halign: 'left' } // Remark column left aligned
+                },
                 didParseCell: function (data) {
                     if (data.section === 'body') {
                         const colIdx = data.column.index;
                         const cellText = data.cell.text[0];
                         let isFailed = false;
 
-                        if (colIdx === 14 && cellText === 'FAIL') isFailed = true;
-                        else if ((colIdx === 6 || colIdx === 7) && Math.abs(parseFloat(cellText)) > limitV20) isFailed = true;
-                        else if ((colIdx === 8 || colIdx === 9) && parseFloat(cellText) > limitSD20) isFailed = true;
-                        else if ((colIdx === 10 || colIdx === 11) && Math.abs(parseFloat(cellText)) > limitV80) isFailed = true;
-                        else if ((colIdx === 12 || colIdx === 13) && parseFloat(cellText) > limitSD80) isFailed = true;
+                        if ((colIdx === 5 || colIdx === 6) && Math.abs(parseFloat(cellText)) > limitV20) isFailed = true;
+                        else if ((colIdx === 7 || colIdx === 8) && parseFloat(cellText) > limitSD20) isFailed = true;
+                        else if ((colIdx === 9 || colIdx === 10) && Math.abs(parseFloat(cellText)) > limitV80) isFailed = true;
+                        else if ((colIdx === 11 || colIdx === 12) && parseFloat(cellText) > limitSD80) isFailed = true;
                         
                         if (isFailed) {
                             data.cell.styles.textColor = [220, 38, 38];
@@ -2521,7 +2543,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const pdfBuffer = doc.output('arraybuffer');
             const startCh = appState.stations[0].chainage;
             const endCh = appState.stations[appState.stations.length - 1].chainage;
-            const defaultFilename = `LevelBook_Ch${startCh.toFixed(3)}_to_${endCh.toFixed(3)}.pdf`;
+            const defaultFilename = `LevelBook_Ch${formatInputChainage(startCh)}_to_${formatInputChainage(endCh)}.pdf`;
             
             if (window.electronAPI && window.electronAPI.savePDF) {
                 const res = await window.electronAPI.savePDF(pdfBuffer, defaultFilename);
@@ -2542,5 +2564,153 @@ document.addEventListener('DOMContentLoaded', () => {
         
         elements.btnExportPdf.innerHTML = '<i class="fa-solid fa-file-pdf"></i> Export PDF Report';
         elements.btnExportPdf.disabled = false;
+    }
+
+    function createCubicSpline(x, y) {
+        const n = x.length - 1;
+        const h = new Float64Array(n);
+        for (let i = 0; i < n; i++) h[i] = x[i + 1] - x[i];
+
+        const alpha = new Float64Array(n);
+        for (let i = 1; i < n; i++) {
+            alpha[i] = (3 / h[i]) * (y[i + 1] - y[i]) - (3 / h[i - 1]) * (y[i] - y[i - 1]);
+        }
+
+        const l = new Float64Array(n + 1);
+        const mu = new Float64Array(n + 1);
+        const z = new Float64Array(n + 1);
+        l[0] = 1; mu[0] = 0; z[0] = 0;
+
+        for (let i = 1; i < n; i++) {
+            l[i] = 2 * (x[i + 1] - x[i - 1]) - h[i - 1] * mu[i - 1];
+            mu[i] = h[i] / l[i];
+            z[i] = (alpha[i] - h[i - 1] * z[i - 1]) / l[i];
+        }
+
+        l[n] = 1; z[n] = 0;
+
+        const c = new Float64Array(n + 1);
+        const b = new Float64Array(n);
+        const d = new Float64Array(n);
+        c[n] = 0;
+
+        for (let j = n - 1; j >= 0; j--) {
+            c[j] = z[j] - mu[j] * c[j + 1];
+            b[j] = (y[j + 1] - y[j]) / h[j] - h[j] * (c[j + 1] + 2 * c[j]) / 3;
+            d[j] = (c[j + 1] - c[j]) / (3 * h[j]);
+        }
+
+        return function evaluate(val) {
+            let i = 0;
+            while (i < n - 1 && val >= x[i + 1]) i++;
+            const dx = val - x[i];
+            return y[i] + b[i] * dx + c[i] * dx * dx + d[i] * dx * dx * dx;
+        };
+    }
+
+    async function exportTampingPDF() {
+        if (appState.stations.length === 0) {
+            alert("No data available to export!");
+            return;
+        }
+        
+        elements.btnExportTampingPdf.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Exporting...';
+        elements.btnExportTampingPdf.disabled = true;
+        
+        try {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ orientation: 'portrait' });
+            
+            // Cover Page Header
+            doc.setFontSize(22);
+            doc.setTextColor(30, 41, 59);
+            doc.text("Tamping Operations Export", 14, 20);
+            
+            doc.setFontSize(10);
+            doc.setTextColor(100, 116, 139);
+            const now = new Date();
+            const dateStr = `${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+            doc.text(`Generated on: ${dateStr}`, 14, 28);
+            
+            // Build Splines
+            const chainages = appState.stations.map(st => st.chainage);
+            const proposedLevels = appState.stations.map(st => st.proposedLevel);
+            
+            const proposedSpline = createCubicSpline(chainages, proposedLevels);
+            
+            // Generate Data
+            const headers = [["Chainage", "Final Rail Level (m)", "Lift(+)/Lower(-) (mm)", "Remark"]];
+            const bodyData = [];
+            
+            for (let i = 0; i < appState.stations.length; i++) {
+                const st1 = appState.stations[i];
+                const liftText1 = st1.liftLower >= 0 ? `+${st1.liftLower.toFixed(0)}` : st1.liftLower.toFixed(0);
+                bodyData.push([
+                    { content: formatChainage(st1.chainage), styles: { fontStyle: 'bold' } },
+                    { content: st1.proposedLevel.toFixed(3), styles: { fontStyle: 'bold' } },
+                    { content: liftText1, styles: { fontStyle: 'bold' } },
+                    { content: st1.remark || "", styles: { fontStyle: 'bold', halign: 'left' } }
+                ]);
+                
+                if (i < appState.stations.length - 1) {
+                    const st2 = appState.stations[i + 1];
+                    // Interpolate 2 stations (3 segments)
+                    const segments = 3;
+                    for (let k = 1; k < segments; k++) {
+                        const interpChainage = st1.chainage + ((st2.chainage - st1.chainage) * k / segments);
+                        const interpProp = proposedSpline(interpChainage);
+                        const interpExist = st1.existingLevel + ((st2.existingLevel - st1.existingLevel) * k / segments);
+                        const interpLift = (interpProp - interpExist) * 1000;
+                        const interpLiftText = interpLift >= 0 ? `+${interpLift.toFixed(0)}` : interpLift.toFixed(0);
+                        bodyData.push([
+                            formatChainage(interpChainage),
+                            interpProp.toFixed(3),
+                            interpLiftText,
+                            ""
+                        ]);
+                    }
+                }
+            }
+
+            doc.autoTable({
+                startY: 33,
+                head: headers,
+                body: bodyData,
+                theme: 'grid',
+                headStyles: { fillColor: [40, 50, 60], fontSize: 10, textColor: 255, halign: 'center' },
+                styles: { fontSize: 9, cellPadding: 2, halign: 'center' },
+                columnStyles: {
+                    0: { cellWidth: 35 },
+                    1: { cellWidth: 35 },
+                    2: { cellWidth: 35 },
+                    3: { halign: 'left' } // Remaining width goes to Remarks
+                }
+            });
+            
+            // Save PDF using Electron API dialog
+            const pdfBuffer = doc.output('arraybuffer');
+            const startCh = appState.stations[0].chainage;
+            const endCh = appState.stations[appState.stations.length - 1].chainage;
+            const defaultFilename = `Tamping_Ch${formatInputChainage(startCh)}_to_${formatInputChainage(endCh)}.pdf`;
+            
+            if (window.electronAPI && window.electronAPI.savePDF) {
+                const res = await window.electronAPI.savePDF(pdfBuffer, defaultFilename);
+                if (res.success) {
+                    showToast("Tamping PDF saved successfully to: " + res.path);
+                } else if (res.error !== "User canceled save") {
+                    alert("Error saving PDF: " + res.error);
+                }
+            } else {
+                doc.save(defaultFilename);
+                showToast("Tamping PDF saved.");
+            }
+            
+        } catch (e) {
+            console.error("Tamping PDF Export Error:", e);
+            alert("Failed to export Tamping PDF: " + e.message);
+        }
+        
+        elements.btnExportTampingPdf.innerHTML = '<i class="fa-solid fa-file-pdf"></i> Export Tamping PDF';
+        elements.btnExportTampingPdf.disabled = false;
     }
 });
