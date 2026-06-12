@@ -429,14 +429,15 @@
         <div id="changelog-modal" class="modal hidden">
             <div class="modal-content" style="max-width: 550px;">
                 <span class="close-modal" id="close-changelog">&times;</span>
-                <div class="modal-header">
-                    <h2><i class="fa-solid fa-clock-rotate-left"></i> Version History</h2>
+                <div class="modal-header" style="border-bottom: 1px solid var(--card-border); margin-bottom: 1.5rem; padding-bottom: 0.75rem;">
+                    <h2><i class="fa-solid fa-list" style="color: #34d399;"></i> What's New</h2>
+                    <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 1.5rem;">Version 1.0.5</p>
                 </div>
                 <div class="modal-body" style="max-height: 400px; overflow-y: auto; text-align: left; line-height: 1.5;">
                     <div style="margin-bottom: 1.5rem;">
                         <h3 style="color: #60a5fa; margin-bottom: 0.25rem;">v1.0.5 (June 2026)</h3>
                         <ul style="padding-left: 1.25rem;">
-                            <li><strong>Comprehensive Technical Manual:</strong> Embedded the finalized Engineering PDF detailing all mathematics, algorithms, and panel definitions. The "Help" button now directly opens this PDF.</li>
+                            <li><strong>Comprehensive Technical Manual:</strong> Converted the entire engineering PDF into a beautifully styled, native HTML modal to prevent system PDF viewer crashes and "file not found" pathing errors in production builds.</li>
                             <li><strong>UI & Release Alignment:</strong> Fully synced all internal application versions, changelogs, and credit windows.</li>
                         </ul>
                     </div>
@@ -486,7 +487,95 @@
             </div>
         </div>
 
+        <!-- Help Modal -->
+        <div id="help-modal" class="modal hidden">
+            <div class="modal-content" style="max-width: 900px; text-align: left;">
+                <span class="close-modal" id="close-help">&times;</span>
+                <div class="modal-header" style="border-bottom: 1px solid var(--card-border); margin-bottom: 1.5rem; padding-bottom: 0.75rem;">
+                    <h2><i class="fa-solid fa-book" style="color: #a78bfa;"></i> Technical Manual</h2>
+                </div>
+                <div class="modal-body" style="line-height: 1.6; max-height: 70vh; overflow-y: auto; padding-right: 15px;">
+                    
+                    <h3 style="color: #60a5fa; margin-bottom: 0.5rem;">1. Introduction and Software Architecture</h3>
+                    <p style="margin-bottom: 1rem;">
+                        TrackLift-Pro is a cross-platform desktop application built using the Electron framework by vibe coding with Antigravity IDE. The purpose of this software is to assist in railway maintenance by optimizing the vertical track profile for improving the running. By packaging Node.js backend capabilities alongside a Chromium frontend, the application provides a seamless desktop experience without the need for complex server deployments.
+                    </p>
+                    <p style="margin-bottom: 1.5rem;">
+                        The user interface is constructed using standard web technologies: HTML5, CSS3, and JavaScript (ES6+). Styling is accomplished using vanilla CSS, ensuring a highly responsive, performant, and modern aesthetic without relying on heavy external framework dependencies. All data processing and intensive mathematical algorithms are executed locally on the client side via the V8 JavaScript engine, resulting in fast, native-like performance even when processing thousands of track stations.
+                    </p>
 
+                    <h3 style="color: #60a5fa; margin-bottom: 0.5rem;">2. Mathematical Foundations & Algorithms</h3>
+                    <p style="margin-bottom: 1rem;">
+                        The core engine of TrackLift-Pro relies on advanced heuristic optimization algorithms to compute the smoothest possible vertical track profile while respecting real-world lift and lower constraints. The software tries to bring the proposed levels within the permitted lift/lower and the unevenness/SD limits. After the optimization, the software mathematically drapes a smooth <b>Cubic Spline</b> over those points (Proposed rail levels) to export the continuous curved proposed rail profile.
+                    </p>
+
+                    <h4 style="color: #a78bfa; margin-bottom: 0.25rem;">2.1 Unevenness(V) Calculations</h4>
+                    <p style="margin-bottom: 1rem;">
+                        Unevenness or vertical versine is defined as the offset of the track from a theoretical chord connecting two points. In order to calculate the unevenness, short chord of 20m length and long chord of 80m length is used. The 20m/80m chords against 9m/18m chords in TRC will give much better analysis about the track condition. The default limits for unevenness for short and long chord are 5mm and 40mm respectively. These values are much strict than the New Track Tolerances as per IRPWM 2024 para 520.
+                    </p>
+
+                    <h4 style="color: #a78bfa; margin-bottom: 0.25rem;">2.2 Standard Deviation (SD) Calculations</h4>
+                    <p style="margin-bottom: 1rem;">
+                        Standard deviation represents the un-evenness of the track over a running window. In this software we adopted 200m rolling block for calculating the SD. i.e. for calculating the SD for a particular station, the unevenness values of 100m behind the station and 100m ahead the station is used. This continuously rolling block, unlike the fixed block for SD calculation in TRC, will give much realistic values. The default limits for SD values for short and long chord are 2mm and 20mm respectively.
+                        <br><br>
+                        In short, both the default Unevenness/SD value limits for short/long chords are much strict than the New Track Tolerances as per IRPWM 2024 para 520. Hence the proposed rail profile will offer a satisfactory riding experience. However, the user is having freedom to relax these limits as per site conditions.
+                    </p>
+
+                    <h4 style="color: #a78bfa; margin-bottom: 0.25rem;">2.3 Optimization Engine (Simulated Annealing)</h4>
+                    <p style="margin-bottom: 0.5rem;">
+                        The solver employs a heuristic optimization algorithm inspired by Simulated Annealing. This is a probabilistic optimization algorithm used to find the global maximum or minimum of a complex function over a large search space. It mimics the metallurgical process of heating and slowly cooling a material to minimize structural defects and achieve a stable state of minimum energy.
+                    </p>
+                    <p style="margin-bottom: 1rem;">
+                        In the context of TrackLift-Pro, the 'cost function' is a mathematical penalty score representing how 'bad' the track geometry is (high versine, high standard deviation, or excessive lift/lowering). The goal of the engine is to find the track profile with the lowest possible cost. The detailed workflow is as follows:
+                    </p>
+                    <ul style="padding-left: 1.5rem; margin-bottom: 1.5rem;">
+                        <li><b>Phase 1: Initialization</b> - The system starts by copying the 'Existing Level' as the initial 'Proposed Level'. A virtual 'Temperature' is initialized at a high value. The initial Global Cost is calculated based on versine limit violations, SD violations, and lift/lower penalties.</li>
+                        <li><b>Phase 2: Iterative Randomization</b> - The engine selects a random, non-locked station and applies a tiny, random adjustment (up or down) to its Proposed Level, constrained by the Custom Max Lift/Lower limits. The software recalculates the entire track's Global Cost.</li>
+                        <li><b>Phase 3: Acceptance Probability</b> - If the new cost is LOWER (the track got smoother), the adjustment is immediately ACCEPTED. If the new cost is HIGHER (the track got worse), the engine uses the current 'Temperature' to calculate an acceptance probability. This allows the algorithm to escape 'local minima'.</li>
+                        <li><b>Phase 4: Cooling Schedule</b> - As iterations progress, the virtual 'Temperature' slowly cools down (decreases). The engine transitions from wild exploration into precise, localized fine-tuning.</li>
+                        <li><b>Phase 5: Finalization</b> - Once the temperature reaches zero or the max iterations are hit, the final Proposed Levels are locked in.</li>
+                    </ul>
+
+                    <h4 style="color: #a78bfa; margin-bottom: 0.25rem;">2.4 Lift vs. Lower Bias Weightage</h4>
+                    <p style="margin-bottom: 1rem;">
+                        In railway maintenance, lifting the track with ballast is structurally sound and standard practice. Lowering the track requires removing core ballast, which is a tedious job. The software is designed so that the solver explicitly hardcodes a 10x penalty multiplier to any 'lowering' adjustments. This mathematically biases the solver to overwhelmingly favour lifting the track at a 10:1 ratio.
+                    </p>
+
+                    <h4 style="color: #a78bfa; margin-bottom: 0.25rem;">2.5 The Hybrid Engine: Cubic Spline & Linear Interpolation</h4>
+                    <p style="margin-bottom: 1.5rem;">
+                        In order to make this software handy for field units during execution, an additional tamping PDF report can be generated, which gives lift/lower values at every 3.33m intervals. TrackLift-Pro utilizes a unique Hybrid Engine:
+                        <br>&bull; <b>Proposed Profile (Cubic Spline):</b> A Natural Cubic Spline algorithm is applied to mathematically trace the physical elastic bending of the rail curve, outputting micro-precise 3.33m intermediate marks.
+                        <br>&bull; <b>Existing Profile (Linear Interpolation):</b> To prevent artificial 'overshoots' and phantom potholes in the jagged existing profile, stable Linear Interpolation is actively used.
+                    </p>
+
+                    <h3 style="color: #60a5fa; margin-bottom: 0.5rem;">3. User Interface Guide</h3>
+                    <ul style="padding-left: 1.5rem; margin-bottom: 1rem;">
+                        <li><b>Project Details:</b> Optional metadata fields (Zone/Division/Chainage) that automatically print on PDF and Excel exports.</li>
+                        <li><b>Interval Rule:</b> For the 20m and 80m chord checks to be valid, your station interval MUST be a clean divisor of 10m (e.g. 10m, 5m, 2m, 1m).</li>
+                        <li><b>Smoothness Emphasis Factor:</b> 
+                            <ul>
+                                <li><i>Low (Weight=1):</i> Minimizes track lifting. Allows small humps to remain.</li>
+                                <li><i>Medium (Weight=10):</i> Standard balanced smoothing.</li>
+                                <li><i>High (Weight=50):</i> Aggressively flattens humps by pushing track up to max lift.</li>
+                                <li><i>Extreme (Weight=200):</i> Overwhelming penalty to any defect. Relentlessly lifts track to achieve glass-like surface.</li>
+                            </ul>
+                        </li>
+                        <li><b>Max Lift/Lower:</b> Global boundaries. Local overrides can be provided directly in the data table.</li>
+                        <li><b>Lock Checkbox:</b> Tick the 'Locked' box to force the optimizer to maintain the exact existing level at that point. The first and last stations are always auto-locked to avoid lifting at start/end stations.</li>
+                    </ul>
+
+                    <h3 style="color: #60a5fa; margin-bottom: 0.5rem;">4. Technical Constraints & Limitations</h3>
+                    <h4 style="color: #a78bfa; margin-bottom: 0.25rem;">4.1 Virtual Boundary Extrapolation</h4>
+                    <p style="margin-bottom: 1rem;">
+                        To compute the unevenness with a 20m chord, 1 station behind and 1 station ahead is required. This is not met for the first/last stations. The software utilizes linear extrapolation to project gradients into 'virtual space' for computation purposes. These virtual calculations are hidden from the UI to prevent confusion.
+                    </p>
+                    <h4 style="color: #a78bfa; margin-bottom: 0.25rem;">4.2 Fixed SD Block Exception</h4>
+                    <p style="margin-bottom: 1.5rem;">
+                        Standard Deviation is calculated over a 200m "rolling window". For the first 100m, the software "locks" the window to evaluate the absolute first 200m chunk of the track (the SD for these stations will be identical). Similarly, the last 100m locks to the final 200m chunk. The middle section reverts to the dynamic, rolling window centered on each station.
+                    </p>
+                </div>
+            </div>
+        </div>
 
         <!-- Custom Table Tooltip -->
         <div id="custom-table-tooltip" class="custom-table-tooltip"></div>

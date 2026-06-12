@@ -62,18 +62,6 @@ ipcMain.handle('save-pdf', async (event, buffer, filename) => {
     }
 });
 
-// IPC Handler to open the technical manual
-ipcMain.handle('open-manual', async () => {
-    try {
-        const manualPath = path.join(__dirname, 'TrackLift-Pro_Technical Manual.pdf');
-        await shell.openPath(manualPath);
-        return { success: true };
-    } catch (error) {
-        console.error("Failed to open manual:", error);
-        return { success: false, error: error.message };
-    }
-});
-
 // IPC Handler for Version checking
 ipcMain.handle('get-app-version', () => {
     return app.getVersion();
