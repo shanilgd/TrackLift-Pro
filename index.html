@@ -24,7 +24,7 @@
             <div>
                 <h1>
                     <i class="fa-solid fa-train" style="color: #60a5fa;"></i> TrackLift Pro
-                    <span id="app-version" class="version-tag">v1.0.3</span>
+                    <span id="app-version" class="version-tag">v1.0.5</span>
                 </h1>
                 <p class="subtitle">Vertical Rail Profile Optimizer</p>
             </div>
@@ -417,7 +417,7 @@
                 </div>
                 <div class="modal-body" style="line-height: 1.6; padding: 10px 0;">
                     <p style="font-size: 1.2rem; font-weight: 600; margin-bottom: 0.5rem;">TrackLift Pro</p>
-                    <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 1.5rem;">Version 1.0.3</p>
+                    <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 1.5rem;">Version 1.0.5</p>
                     <p>Designed and Programmed by</p>
                     <p style="font-size: 1.15rem; font-weight: 700; color: #60a5fa;">SHANIL G D (SSE PWAY)</p>
                     <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.5rem;">Southern Railway, India</p>
@@ -433,6 +433,21 @@
                     <h2><i class="fa-solid fa-clock-rotate-left"></i> Version History</h2>
                 </div>
                 <div class="modal-body" style="max-height: 400px; overflow-y: auto; text-align: left; line-height: 1.5;">
+                    <div style="margin-bottom: 1.5rem;">
+                        <h3 style="color: #60a5fa; margin-bottom: 0.25rem;">v1.0.5 (June 2026)</h3>
+                        <ul style="padding-left: 1.25rem;">
+                            <li><strong>Comprehensive Technical Manual:</strong> Embedded the finalized Engineering PDF detailing all mathematics, algorithms, and panel definitions. The "Help" button now directly opens this PDF.</li>
+                            <li><strong>UI & Release Alignment:</strong> Fully synced all internal application versions, changelogs, and credit windows.</li>
+                        </ul>
+                    </div>
+                    <div style="margin-bottom: 1.5rem;">
+                        <h3 style="color: #60a5fa; margin-bottom: 0.25rem;">v1.0.4 (June 2026)</h3>
+                        <ul style="padding-left: 1.25rem;">
+                            <li><strong>Project Report Engine:</strong> Completely rewrote the reporting engine to output full `docx` and `pdf` project reports containing exhaustive theoretical context.</li>
+                            <li><strong>Versine Formula Corrections:</strong> Hardcoded the true station indexes for chords: [i-1]/[i+1] for 20m, and [i-4]/[i+4] for 80m.</li>
+                            <li><strong>Filename Precision:</strong> Fixed a start/end chainage text formatting bug in the PDF/Excel exports.</li>
+                        </ul>
+                    </div>
                     <div style="margin-bottom: 1.5rem;">
                         <h3 style="color: #60a5fa; margin-bottom: 0.25rem;">v1.0.3 (May 2026)</h3>
                         <ul style="padding-left: 1.25rem;">
@@ -471,60 +486,7 @@
             </div>
         </div>
 
-        <!-- Help Modal -->
-        <div id="help-modal" class="modal hidden">
-            <div class="modal-content" style="max-width: 800px; text-align: left;">
-                <span class="close-modal" id="close-help">&times;</span>
-                <div class="modal-header" style="border-bottom: 1px solid var(--card-border); margin-bottom: 1.5rem; padding-bottom: 0.75rem;">
-                    <h2><i class="fa-solid fa-circle-question" style="color: #a78bfa;"></i> User Manual & Technical Reference</h2>
-                </div>
-                <div class="modal-body" style="line-height: 1.6; max-height: 70vh; overflow-y: auto; padding-right: 10px;">
-                    <h3 style="color: #60a5fa; margin-bottom: 0.5rem;">1. Overview</h3>
-                    <p style="margin-bottom: 1rem;">
-                        This software optimizes the vertical profile (rail levels) of a railway line. The goals are:
-                        (a) maximize smoothness to ensure high-speed riding comfort,
-                        (b) minimize lifts/lowers (deviation from the existing rail level) to facilitate maintenance on a running track,
-                        (c) ensure that vertical versines and block-wise standard deviations stay strictly within safety limits.
-                    </p>
 
-                    <h3 style="color: #60a5fa; margin-bottom: 0.5rem;">2. Versine Calculation (Vertical Unevenness)</h3>
-                    <p style="margin-bottom: 0.5rem;">
-                        The vertical versine at station $i$ on a chord of length $L$ is calculated as the vertical offset of the rail level at station $i$ relative to the chord drawn between stations $(i - k)$ and $(i + k)$, where $2k \times \text{Interval} = L$.
-                    </p>
-                    <ul style="padding-left: 1.5rem; margin-bottom: 1rem;">
-                        <li><b>20m Chord:</b> Evaluated using station $i$ as midpoint, and $(i - 1)$ and $(i + 1)$ as endpoints (for 10m intervals, $k = 1$). $V_{20} = P_i - \frac{P_{i-1} + P_{i+1}}{2}$. Max limit: <b>5.0 mm</b>.</li>
-                        <li><b>80m Chord:</b> Evaluated using station $i$ as midpoint, and $(i - 4)$ and $(i + 4)$ as endpoints (for 10m intervals, $k = 4$). $V_{80} = P_i - \frac{P_{i-4} + P_{i+4}}{2}$. Max limit: <b>40.0 mm</b>.</li>
-                    </ul>
-
-                    <h3 style="color: #60a5fa; margin-bottom: 0.5rem;">3. Standard Deviation (SD) in 200m Blocks</h3>
-                    <p style="margin-bottom: 1rem;">
-                        Standard deviation is calculated over a sliding window of 200 meters. For 10m station intervals, this represents a block of 20 intervals (21 stations). The standard deviation of the versines calculated within this block must satisfy:
-                        <br>&bull; 20m Chord SD: <b>&le; 2.0 mm</b>.
-                        <br>&bull; 80m Chord SD: <b>&le; 20.0 mm</b>.
-                    </p>
-
-                    <h3 style="color: #60a5fa; margin-bottom: 0.5rem;">4. Boundary Conditions</h3>
-                    <p style="margin-bottom: 1rem;">
-                        The endpoints (first and last stations) are locked to the existing track level (lift/lower = 0) to ensure a smooth, hardware-compatible transition to the existing track. For 80m chords, the first 4 and last 4 stations cannot have their 80m versine calculated fully (due to chord endpoints extending beyond the data set). These boundary chord limits are handled gracefully by omitting/clamping the outer nodes from SD calculations.
-                    </p>
-
-                    <h3 style="color: #60a5fa; margin-bottom: 0.5rem;">5. How to Use</h3>
-                    <ol style="padding-left: 1.5rem; margin-bottom: 1rem;">
-                        <li>Specify the start/end chainage and click <b>Generate Grid</b> to enter data manually, or click <b>Template</b> to download a blank Excel template.</li>
-                        <li>Import your existing rail levels using <b>Import Excel</b>.</li>
-                        <li>Adjust constraints (max lift, max lower, versine limits) as desired.</li>
-                        <li>Click <b>Run Auto-Smoother</b>. The solver will run a Projected Gradient Descent with Adam Optimizer to find the smoothest profile that complies with all limits.</li>
-                        <li>If necessary, manually lock specific station levels or edit the Proposed levels in the table. The profile chart, lifts, versines, and compliance stats will update instantly!</li>
-                        <li>Export a detailed PDF engineering report or Excel spreadsheet.</li>
-                    </ol>
-
-                    <h3 style="color: #60a5fa; margin-bottom: 0.5rem;">6. Handling Short & Long KMs</h3>
-                    <p style="margin-bottom: 1rem;">
-                        The optimization engine calculates physical distances strictly based on the <b>sequential row intervals</b> imported, rather than calculating distance from the chainage text itself. To handle short or long KMs (e.g. 500.980 jumping directly to 501.000), simply ensure your stations in the imported <b>Excel file</b> are listed sequentially and represent an equal physical distance (e.g. 10m) between each row. Avoid using the "Generate Grid" function for these specific stretches as it assumes a perfect 1000m length per Km.
-                    </p>
-                </div>
-            </div>
-        </div>
 
         <!-- Custom Table Tooltip -->
         <div id="custom-table-tooltip" class="custom-table-tooltip"></div>

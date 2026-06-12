@@ -9,7 +9,6 @@ document.addEventListener('DOMContentLoaded', () => {
         updateModal: document.getElementById('update-modal'),
         creditsModal: document.getElementById('credits-modal'),
         changelogModal: document.getElementById('changelog-modal'),
-        helpModal: document.getElementById('help-modal'),
         
         // Modal Trigger Buttons
         btnCheckUpdates: document.getElementById('btn-check-updates'),
@@ -21,7 +20,6 @@ document.addEventListener('DOMContentLoaded', () => {
         closeUpdate: document.getElementById('close-update'),
         closeCredits: document.getElementById('close-credits'),
         closeChangelog: document.getElementById('close-changelog'),
-        closeHelp: document.getElementById('close-help'),
         
         // Project details inputs
         projZone: document.getElementById('proj-zone'),
@@ -218,13 +216,20 @@ document.addEventListener('DOMContentLoaded', () => {
     if (elements.btnChangelog) elements.btnChangelog.addEventListener('click', () => showModal(elements.changelogModal));
     if (elements.closeChangelog) elements.closeChangelog.addEventListener('click', () => hideModal(elements.changelogModal));
 
-    if (elements.btnHelp) elements.btnHelp.addEventListener('click', () => showModal(elements.helpModal));
-    if (elements.closeHelp) elements.closeHelp.addEventListener('click', () => hideModal(elements.helpModal));
+    if (elements.btnHelp) {
+        elements.btnHelp.addEventListener('click', () => {
+            if (window.electronAPI && window.electronAPI.openManual) {
+                window.electronAPI.openManual();
+            }
+        });
+    }
 
     // Close on click outside modal content
     window.addEventListener('click', (e) => {
-        [elements.updateModal, elements.creditsModal, elements.changelogModal, elements.helpModal].forEach(modal => {
-            if (e.target === modal) hideModal(modal);
+        [elements.updateModal, elements.creditsModal, elements.changelogModal].forEach(modal => {
+            if (e.target === modal) {
+                hideModal(modal);
+            }
         });
     });
 

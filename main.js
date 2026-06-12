@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -58,6 +58,18 @@ ipcMain.handle('save-pdf', async (event, buffer, filename) => {
         return { success: true, path: filePath };
     } catch (error) {
         console.error("Failed to save PDF:", error);
+        return { success: false, error: error.message };
+    }
+});
+
+// IPC Handler to open the technical manual
+ipcMain.handle('open-manual', async () => {
+    try {
+        const manualPath = path.join(__dirname, 'TrackLift-Pro_Technical Manual.pdf');
+        await shell.openPath(manualPath);
+        return { success: true };
+    } catch (error) {
+        console.error("Failed to open manual:", error);
         return { success: false, error: error.message };
     }
 });
